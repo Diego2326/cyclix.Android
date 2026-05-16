@@ -1,15 +1,16 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models/rental_station.dart';
 import '../theme/cyclix_colors.dart';
 import 'qr_scan_screen.dart';
 
-/// Ciudad de Guatemala como vista inicial (ajusta si el backend envía otra región).
+/// Ciudad de Guatemala como vista inicial (ajusta si el backend envia otra region).
 const LatLng _kInitialCenter = LatLng(14.6349, -90.5069);
 
 const double _kArrivalRadiusMeters = 45;
@@ -22,7 +23,7 @@ class MapScreen extends StatefulWidget {
 }
 
 class _MapScreenState extends State<MapScreen> {
-  final Completer<GoogleMapController> _controller = Completer();
+  final MapController _mapController = MapController();
 
   static final List<RentalStation> _stations = [
     RentalStation(
@@ -32,7 +33,7 @@ class _MapScreenState extends State<MapScreen> {
     ),
     RentalStation(
       id: '2',
-      name: 'Puesto Cayalá',
+      name: 'Puesto Cayala',
       position: const LatLng(14.6071, -90.4814),
     ),
     RentalStation(
@@ -47,16 +48,51 @@ class _MapScreenState extends State<MapScreen> {
   RentalStation? _navigatingTo;
   bool _locationReady = false;
 
-  Set<Marker> get _markers {
+  List<Marker> get _stationMarkers {
     return _stations.map((s) {
       return Marker(
-        markerId: MarkerId(s.id),
-        position: s.position,
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
-        infoWindow: InfoWindow(title: s.name),
-        onTap: () => _onStationTapped(s),
+        point: s.position,
+        width: 48,
+        height: 48,
+        child: Tooltip(
+          message: s.name,
+          child: GestureDetector(
+            onTap: () => _onStationTapped(s),
+            child: const Icon(
+              Icons.location_on,
+              color: CyclixColors.brandGreen,
+              size: 44,
+            ),
+          ),
+        ),
       );
-    }).toSet();
+    }).toList();
+  }
+
+  Marker? get _userMarker {
+    final pos = _lastPosition;
+    if (!_locationReady || pos == null) return null;
+
+    return Marker(
+      point: LatLng(pos.latitude, pos.longitude),
+      width: 34,
+      height: 34,
+      child: Container(
+        decoration: BoxDecoration(
+          color: CyclixColors.primaryBlue.withValues(alpha: 0.18),
+          shape: BoxShape.circle,
+        ),
+        alignment: Alignment.center,
+        child: Container(
+          width: 16,
+          height: 16,
+          decoration: const BoxDecoration(
+            color: CyclixColors.primaryBlue,
+            shape: BoxShape.circle,
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -69,7 +105,9 @@ class _MapScreenState extends State<MapScreen> {
     final serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Activa el GPS para ver tu ubicación y la distancia.')),
+        const SnackBar(
+          content: Text('Activa el GPS para ver tu ubicacion y la distancia.'),
+        ),
       );
     }
 
@@ -85,16 +123,17 @@ class _MapScreenState extends State<MapScreen> {
       return;
     }
 
-    _positionSub = Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: 5,
-      ),
-    ).listen((pos) {
-      _lastPosition = pos;
-      // No llamar setState aquí: reconstruir GoogleMap en cada GPS rompe el arrastre/zoom.
-      _checkArrival();
-    });
+    _positionSub =
+        Geolocator.getPositionStream(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            distanceFilter: 5,
+          ),
+        ).listen((pos) {
+          _lastPosition = pos;
+          if (mounted) setState(() {});
+          _checkArrival();
+        });
 
     try {
       _lastPosition = await Geolocator.getCurrentPosition();
@@ -142,24 +181,38 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   String _formatDistance(double? meters) {
-    if (meters == null) return 'Ubicación no disponible';
+    if (meters == null) return 'Ubicacion no disponible';
     if (meters < 1000) return '${meters.round()} m';
     return '${(meters / 1000).toStringAsFixed(1)} km';
   }
 
-  Future<void> _openGoogleMapsDirections(RentalStation s) async {
+  Future<void> _openOpenStreetMapDirections(RentalStation s) async {
     final lat = s.position.latitude;
     final lng = s.position.longitude;
-    final uri = Uri.parse(
-      'https://www.google.com/maps/dir/?api=1&destination=$lat,$lng&travelmode=bicycling',
-    );
+    final pos = _lastPosition;
+    final uri = pos == null
+        ? Uri.parse(
+            'https://www.openstreetmap.org/?mlat=$lat&mlon=$lng#map=16/$lat/$lng',
+          )
+        : Uri.parse(
+            'https://www.openstreetmap.org/directions'
+            '?engine=fossgis_osrm_bike'
+            '&route=${pos.latitude}%2C${pos.longitude}%3B$lat%2C$lng',
+          );
+
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No se pudo abrir Google Maps.')),
+        const SnackBar(content: Text('No se pudo abrir OpenStreetMap.')),
       );
     }
+  }
+
+  void _centerOnUser() {
+    final pos = _lastPosition;
+    if (pos == null) return;
+    _mapController.move(LatLng(pos.latitude, pos.longitude), 15);
   }
 
   void _onStationTapped(RentalStation s) {
@@ -183,24 +236,24 @@ class _MapScreenState extends State<MapScreen> {
               const SizedBox(height: 8),
               Text(
                 'Al acercarte a menos de ${_kArrivalRadiusMeters.round()} m, '
-                'pasarás automáticamente al escaneo QR.',
+                'pasaras automaticamente al escaneo QR.',
                 style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
-                      color: CyclixColors.instructionGray,
-                    ),
+                  color: CyclixColors.instructionGray,
+                ),
               ),
               const SizedBox(height: 16),
               FilledButton.icon(
                 onPressed: () {
                   setState(() => _navigatingTo = s);
                   Navigator.pop(ctx);
-                  _openGoogleMapsDirections(s);
+                  _openOpenStreetMapDirections(s);
                 },
                 style: FilledButton.styleFrom(
                   backgroundColor: CyclixColors.brandGreen,
                   foregroundColor: Colors.white,
                 ),
                 icon: const Icon(Icons.directions_bike),
-                label: const Text('Abrir ruta en Google Maps'),
+                label: const Text('Abrir ruta en OpenStreetMap'),
               ),
               const SizedBox(height: 8),
               OutlinedButton(
@@ -233,29 +286,44 @@ class _MapScreenState extends State<MapScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final userMarker = _userMarker;
+
     return Stack(
       fit: StackFit.expand,
       children: [
         Positioned.fill(
-          child: GoogleMap(
-            key: const ValueKey<String>('cyclix_google_map'),
-            initialCameraPosition: const CameraPosition(
-              target: _kInitialCenter,
-              zoom: 12,
+          child: FlutterMap(
+            key: const ValueKey<String>('cyclix_open_street_map'),
+            mapController: _mapController,
+            options: const MapOptions(
+              initialCenter: _kInitialCenter,
+              initialZoom: 12,
+              minZoom: 3,
+              maxZoom: 19,
             ),
-            markers: _markers,
-            myLocationEnabled: _locationReady,
-            myLocationButtonEnabled: true,
-            mapToolbarEnabled: false,
-            zoomControlsEnabled: true,
-            compassEnabled: true,
-            mapType: MapType.normal,
-            liteModeEnabled: false,
-            onMapCreated: (c) {
-              if (!_controller.isCompleted) {
-                _controller.complete(c);
-              }
-            },
+            children: [
+              TileLayer(
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.example.cyclixMapaDetalle',
+              ),
+              MarkerLayer(markers: [..._stationMarkers, ?userMarker]),
+              const RichAttributionWidget(
+                attributions: [
+                  TextSourceAttribution('OpenStreetMap contributors'),
+                ],
+              ),
+            ],
+          ),
+        ),
+        Positioned(
+          right: 16,
+          bottom: 16,
+          child: FloatingActionButton.small(
+            heroTag: 'center_on_user',
+            onPressed: _locationReady ? _centerOnUser : null,
+            backgroundColor: Colors.white,
+            foregroundColor: CyclixColors.primaryBlue,
+            child: const Icon(Icons.my_location),
           ),
         ),
         if (!_locationReady)
@@ -270,7 +338,7 @@ class _MapScreenState extends State<MapScreen> {
               child: Padding(
                 padding: const EdgeInsets.all(12),
                 child: Text(
-                  'Permite ubicación para ver distancia y detección de llegada.',
+                  'Permite ubicacion para ver distancia y deteccion de llegada.',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ),

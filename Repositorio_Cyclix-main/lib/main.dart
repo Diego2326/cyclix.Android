@@ -1,7 +1,4 @@
-import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb, TargetPlatform;
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter_android/google_maps_flutter_android.dart';
-import 'package:google_maps_flutter_platform_interface/google_maps_flutter_platform_interface.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'screens/Login.dart';
@@ -10,16 +7,6 @@ import 'theme/cyclix_colors.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // En varios dispositivos Android el modo TLHC no entrega bien los toques al mapa;
-  // la composición híbrida corrige el arrastre y el zoom.
-  if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
-    final GoogleMapsFlutterPlatform impl = GoogleMapsFlutterPlatform.instance;
-    if (impl is GoogleMapsFlutterAndroid) {
-      impl.useAndroidViewSurface = true;
-    }
-  }
-
   runApp(const CyclixApp());
 }
 
@@ -40,22 +27,53 @@ class CyclixApp extends StatelessWidget {
         ),
         useMaterial3: true,
         textTheme: GoogleFonts.poppinsTextTheme().copyWith(
-          displayLarge: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: CyclixColors.textDark),
-          displayMedium: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: CyclixColors.textDark),
-          displaySmall: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: CyclixColors.textDark),
-          headlineLarge: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: CyclixColors.textDark),
-          headlineMedium: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: CyclixColors.textDark),
-          headlineSmall: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: CyclixColors.textDark),
-          titleLarge: GoogleFonts.poppins(fontWeight: FontWeight.w600, color: CyclixColors.textDark),
-          titleMedium: GoogleFonts.poppins(fontWeight: FontWeight.w600, color: CyclixColors.textDark),
-          titleSmall: GoogleFonts.poppins(fontWeight: FontWeight.w600, color: CyclixColors.textDark),
-          bodyLarge: GoogleFonts.poppins(fontWeight: FontWeight.w500, color: CyclixColors.textDark),
-          bodyMedium: GoogleFonts.poppins(fontWeight: FontWeight.w400, color: CyclixColors.textDark),
+          displayLarge: GoogleFonts.poppins(
+            fontWeight: FontWeight.bold,
+            color: CyclixColors.textDark,
+          ),
+          displayMedium: GoogleFonts.poppins(
+            fontWeight: FontWeight.bold,
+            color: CyclixColors.textDark,
+          ),
+          displaySmall: GoogleFonts.poppins(
+            fontWeight: FontWeight.bold,
+            color: CyclixColors.textDark,
+          ),
+          headlineLarge: GoogleFonts.poppins(
+            fontWeight: FontWeight.bold,
+            color: CyclixColors.textDark,
+          ),
+          headlineMedium: GoogleFonts.poppins(
+            fontWeight: FontWeight.bold,
+            color: CyclixColors.textDark,
+          ),
+          headlineSmall: GoogleFonts.poppins(
+            fontWeight: FontWeight.bold,
+            color: CyclixColors.textDark,
+          ),
+          titleLarge: GoogleFonts.poppins(
+            fontWeight: FontWeight.w600,
+            color: CyclixColors.textDark,
+          ),
+          titleMedium: GoogleFonts.poppins(
+            fontWeight: FontWeight.w600,
+            color: CyclixColors.textDark,
+          ),
+          titleSmall: GoogleFonts.poppins(
+            fontWeight: FontWeight.w600,
+            color: CyclixColors.textDark,
+          ),
+          bodyLarge: GoogleFonts.poppins(
+            fontWeight: FontWeight.w500,
+            color: CyclixColors.textDark,
+          ),
+          bodyMedium: GoogleFonts.poppins(
+            fontWeight: FontWeight.w400,
+            color: CyclixColors.textDark,
+          ),
         ),
         scaffoldBackgroundColor: CyclixColors.backgroundWhite,
-        cardTheme: const CardThemeData(
-          color: CyclixColors.cardGrey,
-        ),
+        cardTheme: const CardThemeData(color: CyclixColors.cardGrey),
         appBarTheme: const AppBarTheme(
           backgroundColor: CyclixColors.backgroundWhite,
           elevation: 0,
@@ -68,9 +86,7 @@ class CyclixApp extends StatelessWidget {
       home: const LoginScreen(),
 
       // Ruta para ir a la pantalla principal después del login
-      routes: {
-        '/main': (context) => const MainShell(),
-      },
+      routes: {'/main': (context) => const MainShell()},
     );
   }
 }
