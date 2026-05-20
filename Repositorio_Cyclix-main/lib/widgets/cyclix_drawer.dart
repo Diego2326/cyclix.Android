@@ -26,14 +26,16 @@ class CyclixDrawer extends StatelessWidget {
       child: Column(
         children: [
           DrawerHeader(
-            decoration: const BoxDecoration(
-              color: CyclixColors.primaryBlue,
-            ),
+            decoration: const BoxDecoration(color: CyclixColors.primaryBlue),
             child: Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.directions_bike, size: 50, color: Colors.white),
+                  const Icon(
+                    Icons.directions_bike,
+                    size: 50,
+                    color: Colors.white,
+                  ),
                   const SizedBox(height: 10),
                   Text(
                     'CYCLIX',
@@ -57,13 +59,19 @@ class CyclixDrawer extends StatelessWidget {
                   title: 'Mi cuenta',
                   onTap: () {
                     Navigator.pop(context);
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => const DatosUsuarioScreen()));
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const DatosUsuarioScreen(),
+                      ),
+                    );
                   },
                 ),
                 _DrawerTile(
                   icon: Icons.calendar_today_outlined,
                   title: 'Historial de viajes',
-                  onTap: () => _snack(context, 'Historial de viajes — próximamente'),
+                  onTap: () =>
+                      _snack(context, 'Historial de viajes — próximamente'),
                 ),
                 _DrawerTile(
                   icon: Icons.volume_up_outlined,
@@ -75,7 +83,10 @@ class CyclixDrawer extends StatelessWidget {
                   title: 'Centro de Ayuda',
                   onTap: () {
                     Navigator.pop(context);
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => const AyudaScreen()));
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const AyudaScreen()),
+                    );
                   },
                 ),
                 _DrawerTile(
@@ -91,7 +102,9 @@ class CyclixDrawer extends StatelessWidget {
             icon: Icons.logout,
             title: 'Cerrar Sesión',
             color: Colors.redAccent,
-            onTap: () {
+            onTap: () async {
+              await AuthService().logout();
+              if (!context.mounted) return;
               Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
             },
           ),

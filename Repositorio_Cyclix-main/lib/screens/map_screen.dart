@@ -1,10 +1,11 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../models/rental_station.dart';
 import '../theme/cyclix_colors.dart';
@@ -46,7 +47,9 @@ class _MapScreenState extends State<MapScreen> {
   Position? _lastPosition;
   StreamSubscription<Position>? _positionSub;
   RentalStation? _navigatingTo;
+  List<LatLng> _routePoints = const [];
   bool _locationReady = false;
+  bool _routeLoading = false;
 
   List<Marker> get _stationMarkers {
     return _stations.map((s) {
@@ -131,7 +134,9 @@ class _MapScreenState extends State<MapScreen> {
           ),
         ).listen((pos) {
           _lastPosition = pos;
-          if (mounted) setState(() {});
+          if (mounted) {
+            setState(() => _locationReady = true);
+          }
           _checkArrival();
         });
 
@@ -161,6 +166,7 @@ class _MapScreenState extends State<MapScreen> {
 
   Future<void> _goToQrScanner(RentalStation station) async {
     _navigatingTo = null;
+    _routePoints = const [];
     if (!mounted) return;
     await Navigator.of(context).push<void>(
       MaterialPageRoute(
@@ -186,25 +192,81 @@ class _MapScreenState extends State<MapScreen> {
     return '${(meters / 1000).toStringAsFixed(1)} km';
   }
 
-  Future<void> _openOpenStreetMapDirections(RentalStation s) async {
-    final lat = s.position.latitude;
-    final lng = s.position.longitude;
+  Future<List<LatLng>> _fetchBikeRoute(RentalStation station) async {
     final pos = _lastPosition;
-    final uri = pos == null
-        ? Uri.parse(
-            'https://www.openstreetmap.org/?mlat=$lat&mlon=$lng#map=16/$lat/$lng',
-          )
-        : Uri.parse(
-            'https://www.openstreetmap.org/directions'
-            '?engine=fossgis_osrm_bike'
-            '&route=${pos.latitude}%2C${pos.longitude}%3B$lat%2C$lng',
-          );
+    if (pos == null) return [station.position];
 
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } else if (mounted) {
+    final start = '${pos.longitude},${pos.latitude}';
+    final end = '${station.position.longitude},${station.position.latitude}';
+    final uri = Uri.parse(
+      'https://routing.openstreetmap.de/routed-bike/route/v1/bike/'
+      '$start;$end?overview=full&geometries=geojson',
+    );
+
+    try {
+      final response = await http.get(uri);
+      if (response.statusCode != 200) {
+        throw Exception('OSRM respondio ${response.statusCode}');
+      }
+
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      final routes = body['routes'] as List<dynamic>?;
+      final route = routes?.isNotEmpty == true ? routes!.first : null;
+      final geometry = route is Map<String, dynamic> ? route['geometry'] : null;
+      final coordinates = geometry is Map<String, dynamic>
+          ? geometry['coordinates'] as List<dynamic>?
+          : null;
+
+      if (coordinates == null || coordinates.isEmpty) {
+        throw Exception('La ruta no devolvio coordenadas');
+      }
+
+      return coordinates.map((point) {
+        final pair = point as List<dynamic>;
+        return LatLng((pair[1] as num).toDouble(), (pair[0] as num).toDouble());
+      }).toList();
+    } catch (e) {
+      debugPrint('Error obteniendo ruta: $e');
+      return [LatLng(pos.latitude, pos.longitude), station.position];
+    }
+  }
+
+  Future<void> _showRouteInApp(RentalStation station) async {
+    final pos = _lastPosition;
+    if (pos == null) {
+      setState(() {
+        _navigatingTo = station;
+        _routePoints = [station.position];
+      });
+      _mapController.move(station.position, 16);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No se pudo abrir OpenStreetMap.')),
+        const SnackBar(
+          content: Text('Activa tu ubicacion para trazar la ruta desde aqui.'),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _routeLoading = true;
+      _navigatingTo = station;
+    });
+
+    final route = await _fetchBikeRoute(station);
+    if (!mounted) return;
+
+    setState(() {
+      _routePoints = route;
+      _routeLoading = false;
+    });
+
+    if (route.length >= 2) {
+      _mapController.fitCamera(
+        CameraFit.coordinates(
+          coordinates: route,
+          padding: const EdgeInsets.fromLTRB(32, 96, 32, 180),
+          maxZoom: 16,
+        ),
       );
     }
   }
@@ -236,7 +298,7 @@ class _MapScreenState extends State<MapScreen> {
               const SizedBox(height: 8),
               Text(
                 'Al acercarte a menos de ${_kArrivalRadiusMeters.round()} m, '
-                'pasaras automaticamente al escaneo QR.',
+                'pasaras automaticamente a la lectura NFC.',
                 style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
                   color: CyclixColors.instructionGray,
                 ),
@@ -244,24 +306,15 @@ class _MapScreenState extends State<MapScreen> {
               const SizedBox(height: 16),
               FilledButton.icon(
                 onPressed: () {
-                  setState(() => _navigatingTo = s);
                   Navigator.pop(ctx);
-                  _openOpenStreetMapDirections(s);
+                  _showRouteInApp(s);
                 },
                 style: FilledButton.styleFrom(
                   backgroundColor: CyclixColors.brandGreen,
                   foregroundColor: Colors.white,
                 ),
                 icon: const Icon(Icons.directions_bike),
-                label: const Text('Abrir ruta en OpenStreetMap'),
-              ),
-              const SizedBox(height: 8),
-              OutlinedButton(
-                onPressed: () {
-                  setState(() => _navigatingTo = s);
-                  Navigator.pop(ctx);
-                },
-                child: const Text('Solo seguir en este mapa'),
+                label: const Text('Mostrar ruta en el mapa'),
               ),
               const SizedBox(height: 8),
               TextButton(
@@ -306,6 +359,18 @@ class _MapScreenState extends State<MapScreen> {
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                 userAgentPackageName: 'com.example.cyclixMapaDetalle',
               ),
+              if (_routePoints.length >= 2)
+                PolylineLayer(
+                  polylines: [
+                    Polyline(
+                      points: _routePoints,
+                      strokeWidth: 6,
+                      color: CyclixColors.primaryBlue,
+                      borderStrokeWidth: 3,
+                      borderColor: Colors.white,
+                    ),
+                  ],
+                ),
               MarkerLayer(markers: [..._stationMarkers, ?userMarker]),
               const RichAttributionWidget(
                 attributions: [
@@ -315,6 +380,57 @@ class _MapScreenState extends State<MapScreen> {
             ],
           ),
         ),
+        if (_navigatingTo != null)
+          Positioned(
+            left: 16,
+            right: 16,
+            bottom: 84,
+            child: Material(
+              elevation: 3,
+              borderRadius: BorderRadius.circular(8),
+              clipBehavior: Clip.antiAlias,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
+                child: Row(
+                  children: [
+                    _routeLoading
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(strokeWidth: 2.5),
+                          )
+                        : const Icon(
+                            Icons.directions_bike,
+                            color: CyclixColors.primaryBlue,
+                          ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        _routeLoading
+                            ? 'Calculando ruta...'
+                            : 'Ruta hacia ${_navigatingTo!.name}',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Cancelar ruta',
+                      onPressed: () {
+                        setState(() {
+                          _navigatingTo = null;
+                          _routePoints = const [];
+                          _routeLoading = false;
+                        });
+                      },
+                      icon: const Icon(Icons.close),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
         Positioned(
           right: 16,
           bottom: 16,

@@ -1,5 +1,5 @@
 name: cyclix_mapa_detalle
-description: "Cyclix — mapa, escaneo QR y detalle de bicicleta"
+description: "Cyclix — mapa, lectura NFC y detalle de bicicleta"
 publish_to: 'none'
 
 version: 1.0.0+1
@@ -13,11 +13,11 @@ dependencies:
   cupertino_icons: ^1.0.8
   geolocator: ^13.0.2
   mobile_scanner: ^6.0.2
-  url_launcher: ^6.3.1
   google_fonts: ^6.2.1
   http: ^1.2.1
   local_auth: ^2.3.0
   flutter_secure_storage: ^9.2.2
+  nfc_manager: ^4.2.1
   camera: ^0.11.1
   flutter_map: ^8.3.0
   latlong2: ^0.9.1

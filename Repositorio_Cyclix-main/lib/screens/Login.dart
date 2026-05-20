@@ -17,7 +17,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController passController = TextEditingController();
   final AuthService _authService = AuthService();
   final LocalAuthentication auth = LocalAuthentication();
-  
+
   bool _isLoading = false;
   bool _obscurePassword = true;
   bool _canCheckBiometrics = false;
@@ -25,49 +25,67 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    _initBiometrics();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initBiometrics();
+    });
   }
 
   Future<void> _initBiometrics() async {
     final hasLogin = await _authService.hasPreviousLogin();
-    if (!hasLogin) return;
+    if (!mounted || !hasLogin) return;
 
     try {
-      final bool canAuthenticateWithBiometrics = await auth.canCheckBiometrics;
-      final bool canAuthenticate = canAuthenticateWithBiometrics || await auth.isDeviceSupported();
+      final isSupported = await auth.isDeviceSupported();
+      final availableBiometrics = await auth.getAvailableBiometrics();
+      final canAuthenticate = isSupported && availableBiometrics.isNotEmpty;
+      if (!mounted) return;
       setState(() {
         _canCheckBiometrics = canAuthenticate;
       });
     } catch (e) {
-      print(e);
+      debugPrint('Error inicializando biometría: $e');
+      if (!mounted) return;
+      setState(() {
+        _canCheckBiometrics = false;
+      });
     }
   }
 
   Future<void> _authenticateWithBiometrics() async {
+    if (_isLoading) return;
+
     try {
       final bool didAuthenticate = await auth.authenticate(
         localizedReason: 'Inicia sesión con tu huella o rostro',
-        options: const AuthenticationOptions(
-          stickyAuth: true,
-          biometricOnly: true,
-        ),
+        options: const AuthenticationOptions(biometricOnly: true),
       );
-      if (didAuthenticate) {
-        final email = await _authService.getSavedEmail();
-        final password = await _authService.getSavedPassword();
-        
-        if (email != null && password != null) {
-          setState(() => _isLoading = true);
-          final result = await _authService.login(email, password);
-          setState(() => _isLoading = false);
-          
-          if (result != null) {
-            _showWelcomeAndNavigate(result['firstName'] ?? 'Usuario');
-          }
-        }
+
+      if (!mounted || !didAuthenticate) return;
+
+      final token = await _authService.getSavedToken();
+      final userData = await _authService.getUserData();
+
+      if (!mounted) return;
+
+      if (token != null && userData != null) {
+        _showWelcomeAndNavigate(userData['firstName'] ?? 'Usuario');
+      } else {
+        await _authService.logout();
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Tu sesión expiró. Inicia sesión de nuevo."),
+          ),
+        );
       }
     } catch (e) {
-      print(e);
+      debugPrint('Error de biometría: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("No se pudo iniciar sesión con biometría"),
+        ),
+      );
     }
   }
 
@@ -95,17 +113,20 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     final result = await _authService.login(
-      userController.text,
+      userController.text.trim(),
       passController.text,
     );
 
+    if (!mounted) return;
     setState(() => _isLoading = false);
 
     if (result != null) {
       _showWelcomeAndNavigate(result['firstName'] ?? 'Usuario');
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Credenciales incorrectas o error de conexión")),
+        const SnackBar(
+          content: Text("Credenciales incorrectas o error de conexión"),
+        ),
       );
     }
   }
@@ -132,7 +153,11 @@ class _LoginScreenState extends State<LoginScreen> {
                   'assets/logo_cyclix.png',
                   height: 180,
                   errorBuilder: (context, error, stackTrace) {
-                    return const Icon(Icons.directions_bike, size: 100, color: CyclixColors.primaryBlue);
+                    return const Icon(
+                      Icons.directions_bike,
+                      size: 100,
+                      color: CyclixColors.primaryBlue,
+                    );
                   },
                 ),
                 const SizedBox(height: 20),
@@ -159,8 +184,13 @@ class _LoginScreenState extends State<LoginScreen> {
                   style: GoogleFonts.poppins(color: CyclixColors.textDark),
                   decoration: InputDecoration(
                     labelText: "Email",
-                    prefixIcon: const Icon(Icons.email_outlined, color: CyclixColors.primaryBlue),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    prefixIcon: const Icon(
+                      Icons.email_outlined,
+                      color: CyclixColors.primaryBlue,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 15),
@@ -170,17 +200,29 @@ class _LoginScreenState extends State<LoginScreen> {
                   style: GoogleFonts.poppins(color: CyclixColors.textDark),
                   decoration: InputDecoration(
                     labelText: "Contraseña",
-                    prefixIcon: const Icon(Icons.lock_outline, color: CyclixColors.primaryBlue),
-                    suffixIcon: IconButton(
-                      icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
-                      onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                    prefixIcon: const Icon(
+                      Icons.lock_outline,
+                      color: CyclixColors.primaryBlue,
                     ),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscurePassword
+                            ? Icons.visibility_off
+                            : Icons.visibility,
+                      ),
+                      onPressed: () =>
+                          setState(() => _obscurePassword = !_obscurePassword),
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 30),
                 _isLoading
-                    ? const CircularProgressIndicator(color: CyclixColors.primaryBlue)
+                    ? const CircularProgressIndicator(
+                        color: CyclixColors.primaryBlue,
+                      )
                     : Column(
                         children: [
                           SizedBox(
@@ -191,25 +233,51 @@ class _LoginScreenState extends State<LoginScreen> {
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: CyclixColors.accentGreen,
                                 foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
                               ),
-                              child: Text("INGRESAR", style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
+                              child: Text(
+                                "INGRESAR",
+                                style: GoogleFonts.poppins(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ),
                           ),
                           if (_canCheckBiometrics) ...[
                             const SizedBox(height: 20),
                             IconButton(
-                              icon: const Icon(Icons.fingerprint, size: 50, color: CyclixColors.primaryBlue),
+                              icon: const Icon(
+                                Icons.fingerprint,
+                                size: 50,
+                                color: CyclixColors.primaryBlue,
+                              ),
                               onPressed: _authenticateWithBiometrics,
                             ),
-                            Text("Ingresar con biometría", style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey)),
+                            Text(
+                              "Ingresar con biometría",
+                              style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
+                            ),
                           ],
                         ],
                       ),
                 const SizedBox(height: 20),
                 TextButton(
-                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RegisterScreen())),
-                  child: Text("¿No tienes cuenta? Regístrate aquí", style: GoogleFonts.poppins(fontWeight: FontWeight.w600, color: CyclixColors.primaryBlue)),
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const RegisterScreen()),
+                  ),
+                  child: Text(
+                    "¿No tienes cuenta? Regístrate aquí",
+                    style: GoogleFonts.poppins(
+                      fontWeight: FontWeight.w600,
+                      color: CyclixColors.primaryBlue,
+                    ),
+                  ),
                 ),
               ],
             ),

@@ -34,16 +34,24 @@ class _DatosUsuarioScreenState extends State<DatosUsuarioScreen> {
       appBar: AppBar(
         title: Text(
           "MI CUENTA",
-          style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: CyclixColors.primaryBlue),
+          style: GoogleFonts.poppins(
+            fontWeight: FontWeight.bold,
+            color: CyclixColors.primaryBlue,
+          ),
         ),
         iconTheme: const IconThemeData(color: CyclixColors.primaryBlue),
         elevation: 0,
         backgroundColor: Colors.transparent,
       ),
       body: userData == null
-          ? const Center(child: CircularProgressIndicator(color: CyclixColors.primaryBlue))
+          ? const Center(
+              child: CircularProgressIndicator(color: CyclixColors.primaryBlue),
+            )
           : SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24.0,
+                vertical: 20.0,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -54,12 +62,19 @@ class _DatosUsuarioScreenState extends State<DatosUsuarioScreen> {
                           padding: const EdgeInsets.all(4),
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            border: Border.all(color: CyclixColors.primaryBlue, width: 2),
+                            border: Border.all(
+                              color: CyclixColors.primaryBlue,
+                              width: 2,
+                            ),
                           ),
                           child: const CircleAvatar(
                             radius: 55,
                             backgroundColor: CyclixColors.cardGrey,
-                            child: Icon(Icons.person, size: 70, color: CyclixColors.primaryBlue),
+                            child: Icon(
+                              Icons.person,
+                              size: 70,
+                              color: CyclixColors.primaryBlue,
+                            ),
                           ),
                         ),
                         const SizedBox(height: 16),
@@ -85,12 +100,23 @@ class _DatosUsuarioScreenState extends State<DatosUsuarioScreen> {
                   ),
                   const SizedBox(height: 20),
                   _buildInfoCard([
-                    _buildInfoTile(Icons.person_outline, "Nombre Completo", 
-                        "${userData!['firstName'] ?? ''} ${userData!['lastName'] ?? ''}"),
+                    _buildInfoTile(
+                      Icons.person_outline,
+                      "Nombre Completo",
+                      "${userData!['firstName'] ?? ''} ${userData!['lastName'] ?? ''}",
+                    ),
                     _buildDivider(),
-                    _buildInfoTile(Icons.email_outlined, "Correo Electrónico", userData!['email'] ?? 'No disponible'),
+                    _buildInfoTile(
+                      Icons.email_outlined,
+                      "Correo Electrónico",
+                      userData!['email'] ?? 'No disponible',
+                    ),
                     _buildDivider(),
-                    _buildInfoTile(Icons.phone_android_outlined, "Teléfono", userData!['phone'] ?? 'No disponible'),
+                    _buildInfoTile(
+                      Icons.phone_android_outlined,
+                      "Teléfono",
+                      userData!['phone'] ?? 'No disponible',
+                    ),
                   ]),
                   const SizedBox(height: 30),
                   Text(
@@ -103,15 +129,25 @@ class _DatosUsuarioScreenState extends State<DatosUsuarioScreen> {
                   ),
                   const SizedBox(height: 20),
                   _buildInfoCard([
-                    _buildInfoTile(Icons.verified_user_outlined, "Estado del Usuario", "ACTIVO"),
+                    _buildInfoTile(
+                      Icons.verified_user_outlined,
+                      "Estado del Usuario",
+                      "ACTIVO",
+                    ),
                   ]),
                   const SizedBox(height: 40),
                   SizedBox(
                     width: double.infinity,
                     height: 55,
                     child: ElevatedButton.icon(
-                      onPressed: () {
-                        Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+                      onPressed: () async {
+                        await _authService.logout();
+                        if (!context.mounted) return;
+                        Navigator.pushNamedAndRemoveUntil(
+                          context,
+                          '/',
+                          (route) => false,
+                        );
                       },
                       icon: const Icon(Icons.logout, color: Colors.white),
                       label: Text(

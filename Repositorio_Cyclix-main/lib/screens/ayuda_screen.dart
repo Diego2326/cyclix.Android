@@ -11,22 +11,22 @@ class AyudaScreen extends StatelessWidget {
     _PreguntaFrecuente(
       pregunta: '¿Cómo desbloqueo una bicicleta?',
       respuesta:
-      'Escanea el código QR que está en el manillar de la bicicleta con la app y sigue las instrucciones en pantalla.',
+          'Acerca tu teléfono al tag NFC de la bicicleta con la app abierta y sigue las instrucciones en pantalla.',
     ),
     _PreguntaFrecuente(
       pregunta: '¿Cómo se calcula el costo del viaje?',
       respuesta:
-      'El costo se calcula por minuto de uso desde que desbloqueas la bicicleta hasta que la devuelves a una estación.',
+          'El costo se calcula por minuto de uso desde que desbloqueas la bicicleta hasta que la devuelves a una estación.',
     ),
     _PreguntaFrecuente(
       pregunta: '¿Dónde puedo dejar la bicicleta?',
       respuesta:
-      'Debes dejarla en cualquiera de las estaciones marcadas en el mapa de la app para que el viaje finalice correctamente.',
+          'Debes dejarla en cualquiera de las estaciones marcadas en el mapa de la app para que el viaje finalice correctamente.',
     ),
     _PreguntaFrecuente(
       pregunta: '¿Qué hago si la bicicleta tiene un problema?',
       respuesta:
-      'Reporta el problema desde la sección Contacto o llama a nuestra línea de atención al cliente.',
+          'Reporta el problema desde la sección Contacto o llama a nuestra línea de atención al cliente.',
     ),
   ];
 
@@ -91,10 +91,7 @@ class AyudaScreen extends StatelessWidget {
 }
 
 class _PreguntaFrecuente {
-  const _PreguntaFrecuente({
-    required this.pregunta,
-    required this.respuesta,
-  });
+  const _PreguntaFrecuente({required this.pregunta, required this.respuesta});
   final String pregunta;
   final String respuesta;
 }

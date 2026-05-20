@@ -27,7 +27,9 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>Cyclix usa la cámara para escanear el código QR de la bicicleta.</string>
+	<string>Cyclix usa la cámara para escanear el código QR de la bicicleta y tomar fotos requeridas durante tus viajes.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Cyclix usa Face ID para iniciar sesión de forma segura.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Cyclix necesita tu ubicación para mostrarte en el mapa y calcular la distancia a los puestos de renta.</string>
 	<key>UIApplicationSceneManifest</key>
