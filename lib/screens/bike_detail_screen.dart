@@ -78,6 +78,17 @@ class _BikeDetailScreenState extends State<BikeDetailScreen> {
         );
       }
 
+      final zone = await _api.validateZone(
+        latitude: position.latitude,
+        longitude: position.longitude,
+      );
+      if (zone['allowed'] == false) {
+        throw CyclixApiException(
+          zone['message']?.toString() ??
+              'No puedes iniciar el viaje fuera de una zona habilitada.',
+        );
+      }
+
       final trip = await _api.createTrip(
         bikeId: widget.bike.id,
         latitude: position.latitude,

@@ -163,6 +163,17 @@ class CyclixApiService {
     return _asMap(data);
   }
 
+  Future<Map<String, dynamic>> validateZone({
+    required double latitude,
+    required double longitude,
+  }) async {
+    final data = await post('/zones/validate', {
+      'latitude': latitude,
+      'longitude': longitude,
+    });
+    return _asMap(data);
+  }
+
   Future<List<Map<String, dynamic>>> getMyTrips() async {
     final data = await get('/trips/my');
     return _asMapList(data);
@@ -227,6 +238,28 @@ class CyclixApiService {
     return _asMap(data);
   }
 
+  Future<List<Map<String, dynamic>>> getMyFailureReports() async {
+    final data = await get('/support/failure-reports');
+    return _asMapList(data);
+  }
+
+  Future<Map<String, dynamic>> createFailureReport({
+    required Object bikeId,
+    Object? tripId,
+    required String priority,
+    required String title,
+    required String description,
+  }) async {
+    final data = await post('/support/failure-reports', {
+      'bikeId': int.tryParse(bikeId.toString()) ?? bikeId,
+      if (tripId != null) 'tripId': int.tryParse(tripId.toString()) ?? tripId,
+      'priority': priority,
+      'title': title,
+      'description': description,
+    });
+    return _asMap(data);
+  }
+
   Future<List<Map<String, dynamic>>> getPricingRules() async {
     final data = await get('/admin/pricing/rules');
     return _asMapList(data);
@@ -266,6 +299,121 @@ class CyclixApiService {
   Future<List<Map<String, dynamic>>> getSubscriptionPlans() async {
     final data = await get('/admin/subscriptions/plans');
     return _asMapList(data);
+  }
+
+  Future<List<Map<String, dynamic>>> getAdminTrips() async {
+    final data = await get('/admin/trips');
+    return _asMapList(data);
+  }
+
+  Future<Map<String, dynamic>> cancelAdminTrip(Object id) async {
+    final data = await put('/admin/trips/$id/cancel', {});
+    return _asMap(data);
+  }
+
+  Future<List<Map<String, dynamic>>> getAdminFailureReports() async {
+    final data = await get('/admin/support/failure-reports');
+    return _asMapList(data);
+  }
+
+  Future<Map<String, dynamic>> createMaintenanceFromFailureReport({
+    required Object reportId,
+    Object? assignedToUserId,
+    required String priority,
+    required String type,
+    int? estimatedMinutes,
+    String? currentLocation,
+  }) async {
+    final body = <String, dynamic>{'priority': priority, 'type': type};
+    if (assignedToUserId != null) {
+      body['assignedToUserId'] =
+          int.tryParse(assignedToUserId.toString()) ?? assignedToUserId;
+    }
+    if (estimatedMinutes != null) body['estimatedMinutes'] = estimatedMinutes;
+    if (currentLocation != null && currentLocation.trim().isNotEmpty) {
+      body['currentLocation'] = currentLocation.trim();
+    }
+    final data = await post(
+      '/admin/support/failure-reports/$reportId/maintenance',
+      body,
+    );
+    return _asMap(data);
+  }
+
+  Future<List<Map<String, dynamic>>> getAuditLogs({
+    String? eventType,
+    String? entityType,
+  }) async {
+    final params = <String, String>{
+      if (eventType != null && eventType.isNotEmpty) 'eventType': eventType,
+      if (entityType != null && entityType.isNotEmpty) 'entityType': entityType,
+    };
+    final query = params.isEmpty
+        ? ''
+        : '?${Uri(queryParameters: params).query}';
+    final data = await get('/admin/audit$query');
+    return _asMapList(data);
+  }
+
+  Future<Map<String, dynamic>> getBicycleAnalytics({
+    int days = 30,
+    String period = 'DAY',
+  }) async {
+    final data = await get(
+      '/admin/analytics/bicycles?days=$days&period=$period',
+    );
+    return _asMap(data);
+  }
+
+  Future<Map<String, dynamic>> getUserAnalytics({
+    int days = 30,
+    String period = 'DAY',
+  }) async {
+    final data = await get('/admin/analytics/users?days=$days&period=$period');
+    return _asMap(data);
+  }
+
+  Future<Map<String, dynamic>> getStationAnalytics({
+    int days = 30,
+    String period = 'DAY',
+  }) async {
+    final data = await get(
+      '/admin/analytics/stations?days=$days&period=$period',
+    );
+    return _asMap(data);
+  }
+
+  Future<List<Map<String, dynamic>>> getZones() async {
+    final data = await get('/admin/zones');
+    return _asMapList(data);
+  }
+
+  Future<Map<String, dynamic>> createZone({
+    required String name,
+    String? description,
+    required double centerLatitude,
+    required double centerLongitude,
+    required int radiusMeters,
+    bool active = true,
+  }) async {
+    final data = await post('/admin/zones', {
+      'name': name,
+      if (description != null && description.trim().isNotEmpty)
+        'description': description.trim(),
+      'centerLatitude': centerLatitude,
+      'centerLongitude': centerLongitude,
+      'radiusMeters': radiusMeters,
+      'active': active,
+    });
+    return _asMap(data);
+  }
+
+  Future<Map<String, dynamic>> updateZoneStatus({
+    required Object id,
+    required bool active,
+  }) async {
+    final data = await patch('/admin/zones/$id/status', {'active': active});
+    return _asMap(data);
   }
 
   Future<List<Map<String, dynamic>>> getUsers() async {

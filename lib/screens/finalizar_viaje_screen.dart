@@ -126,6 +126,17 @@ class _FinalizarViajeScreenState extends State<FinalizarViajeScreen> {
         );
       }
 
+      final zone = await _api.validateZone(
+        latitude: position.latitude,
+        longitude: position.longitude,
+      );
+      if (zone['allowed'] == false) {
+        throw CyclixApiException(
+          zone['message']?.toString() ??
+              'Debes finalizar el viaje dentro de una zona habilitada.',
+        );
+      }
+
       final finishedTrip = await _api.finishTrip(
         tripId: widget.trip['id'],
         latitude: position.latitude,

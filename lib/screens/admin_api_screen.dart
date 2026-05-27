@@ -20,7 +20,7 @@ class _AdminApiScreenState extends State<AdminApiScreen> {
     final bottom = MediaQuery.paddingOf(context).bottom;
 
     return DefaultTabController(
-      length: 7,
+      length: 12,
       child: Scaffold(
         backgroundColor: CyclixColors.backgroundWhite,
         appBar: const CyclixHeader(showBack: true),
@@ -34,6 +34,11 @@ class _AdminApiScreenState extends State<AdminApiScreen> {
                   Tab(text: 'Usuarios'),
                   Tab(text: 'Tecnicos'),
                   Tab(text: 'Ordenes'),
+                  Tab(text: 'Zonas'),
+                  Tab(text: 'Reportes'),
+                  Tab(text: 'Viajes'),
+                  Tab(text: 'Analitica'),
+                  Tab(text: 'Auditoria'),
                   Tab(text: 'Bicicletas'),
                   Tab(text: 'Tarifas'),
                   Tab(text: 'Festivos'),
@@ -54,6 +59,11 @@ class _AdminApiScreenState extends State<AdminApiScreen> {
                     ),
                     _MaintenanceUsersTab(api: _api, bottomPadding: bottom),
                     _MaintenanceOrdersTab(api: _api, bottomPadding: bottom),
+                    _ZonesTab(api: _api, bottomPadding: bottom),
+                    _FailureReportsTab(api: _api, bottomPadding: bottom),
+                    _AdminTripsTab(api: _api, bottomPadding: bottom),
+                    _AnalyticsTab(api: _api, bottomPadding: bottom),
+                    _AuditTab(api: _api, bottomPadding: bottom),
                     _ApiList(
                       future: _api.getBikes(),
                       titleBuilder: (item) =>
@@ -583,18 +593,453 @@ class _MaintenanceOrderTile extends StatelessWidget {
   }
 }
 
+class _ZonesTab extends StatefulWidget {
+  const _ZonesTab({required this.api, required this.bottomPadding});
+
+  final CyclixApiService api;
+  final double bottomPadding;
+
+  @override
+  State<_ZonesTab> createState() => _ZonesTabState();
+}
+
+class _ZonesTabState extends State<_ZonesTab> {
+  final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
+  final _descriptionController = TextEditingController();
+  final _latController = TextEditingController(text: '14.9722');
+  final _lngController = TextEditingController(text: '-89.5305');
+  final _radiusController = TextEditingController(text: '1500');
+  late Future<List<Map<String, dynamic>>> _future;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = widget.api.getZones();
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _descriptionController.dispose();
+    _latController.dispose();
+    _lngController.dispose();
+    _radiusController.dispose();
+    super.dispose();
+  }
+
+  void _reload() {
+    setState(() {
+      _future = widget.api.getZones();
+    });
+  }
+
+  Future<void> _createZone() async {
+    if (!_formKey.currentState!.validate() || _saving) return;
+    final lat = double.tryParse(_latController.text.trim());
+    final lng = double.tryParse(_lngController.text.trim());
+    final radius = int.tryParse(_radiusController.text.trim());
+    if (lat == null || lng == null || radius == null || radius <= 0) {
+      _showSnack('Revisa latitud, longitud y radio.');
+      return;
+    }
+
+    setState(() => _saving = true);
+    try {
+      await widget.api.createZone(
+        name: _nameController.text.trim(),
+        description: _descriptionController.text,
+        centerLatitude: lat,
+        centerLongitude: lng,
+        radiusMeters: radius,
+      );
+      _nameController.clear();
+      _descriptionController.clear();
+      _reload();
+      _showSnack('Zona creada correctamente.');
+    } catch (e) {
+      _showSnack('No se pudo crear la zona. $e');
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _toggleZone(Map<String, dynamic> zone) async {
+    try {
+      await widget.api.updateZoneStatus(
+        id: zone['id'],
+        active: zone['active'] != true,
+      );
+      _reload();
+    } catch (e) {
+      _showSnack('No se pudo actualizar la zona. $e');
+    }
+  }
+
+  void _showSnack(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _future,
+      builder: (context, snapshot) {
+        final zones = snapshot.data ?? const <Map<String, dynamic>>[];
+        return ListView(
+          padding: EdgeInsets.fromLTRB(16, 16, 16, 24 + widget.bottomPadding),
+          children: [
+            _SectionPanel(
+              title: 'Nueva zona permitida',
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  children: [
+                    _TextInput(
+                      controller: _nameController,
+                      label: 'Nombre',
+                      validator: _required,
+                    ),
+                    _TextInput(
+                      controller: _descriptionController,
+                      label: 'Descripcion',
+                    ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _TextInput(
+                            controller: _latController,
+                            label: 'Latitud',
+                            keyboardType: const TextInputType.numberWithOptions(
+                              signed: true,
+                              decimal: true,
+                            ),
+                            validator: _required,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _TextInput(
+                            controller: _lngController,
+                            label: 'Longitud',
+                            keyboardType: const TextInputType.numberWithOptions(
+                              signed: true,
+                              decimal: true,
+                            ),
+                            validator: _required,
+                          ),
+                        ),
+                      ],
+                    ),
+                    _TextInput(
+                      controller: _radiusController,
+                      label: 'Radio en metros',
+                      keyboardType: TextInputType.number,
+                      validator: _required,
+                    ),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: _saving ? null : _createZone,
+                        icon: const Icon(Icons.add_location_alt_outlined),
+                        label: const Text('Crear zona'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            _SectionPanel(
+              title: 'Zonas registradas',
+              child: snapshot.connectionState != ConnectionState.done
+                  ? const Center(child: CircularProgressIndicator())
+                  : zones.isEmpty
+                  ? const Text('Aun no hay zonas.')
+                  : Column(
+                      children: [
+                        for (final zone in zones)
+                          SwitchListTile(
+                            contentPadding: EdgeInsets.zero,
+                            value: zone['active'] == true,
+                            onChanged: (_) => _toggleZone(zone),
+                            title: Text(zone['name']?.toString() ?? ''),
+                            subtitle: Text(
+                              '${zone['radiusMeters']} m · ${zone['centerLatitude']}, ${zone['centerLongitude']}',
+                            ),
+                          ),
+                      ],
+                    ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _FailureReportsTab extends StatefulWidget {
+  const _FailureReportsTab({required this.api, required this.bottomPadding});
+
+  final CyclixApiService api;
+  final double bottomPadding;
+
+  @override
+  State<_FailureReportsTab> createState() => _FailureReportsTabState();
+}
+
+class _FailureReportsTabState extends State<_FailureReportsTab> {
+  late Future<List<Map<String, dynamic>>> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = widget.api.getAdminFailureReports();
+  }
+
+  void _reload() {
+    setState(() {
+      _future = widget.api.getAdminFailureReports();
+    });
+  }
+
+  Future<void> _sendToMaintenance(Map<String, dynamic> report) async {
+    try {
+      await widget.api.createMaintenanceFromFailureReport(
+        reportId: report['id'],
+        priority: report['priority']?.toString() ?? 'MEDIUM',
+        type: 'GENERAL',
+      );
+      _reload();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Orden de mantenimiento creada.')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('No se pudo crear orden. $e')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _future,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return _AdminError(message: snapshot.error.toString());
+        }
+        final reports = snapshot.data ?? const <Map<String, dynamic>>[];
+        if (reports.isEmpty) return const Center(child: Text('Sin reportes.'));
+        return ListView.separated(
+          padding: EdgeInsets.fromLTRB(16, 16, 16, 24 + widget.bottomPadding),
+          itemCount: reports.length,
+          separatorBuilder: (_, _) => const Divider(height: 1),
+          itemBuilder: (context, index) {
+            final report = reports[index];
+            return ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.report_problem_outlined),
+              title: Text(report['title']?.toString() ?? ''),
+              subtitle: Text(
+                'Bici ${report['bikeId']} · ${report['priority']} · ${report['status']}',
+              ),
+              trailing: IconButton(
+                tooltip: 'Crear mantenimiento',
+                onPressed: () => _sendToMaintenance(report),
+                icon: const Icon(Icons.build_outlined),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _AdminTripsTab extends StatefulWidget {
+  const _AdminTripsTab({required this.api, required this.bottomPadding});
+
+  final CyclixApiService api;
+  final double bottomPadding;
+
+  @override
+  State<_AdminTripsTab> createState() => _AdminTripsTabState();
+}
+
+class _AdminTripsTabState extends State<_AdminTripsTab> {
+  late Future<List<Map<String, dynamic>>> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = widget.api.getAdminTrips();
+  }
+
+  void _reload() {
+    setState(() {
+      _future = widget.api.getAdminTrips();
+    });
+  }
+
+  Future<void> _cancel(Map<String, dynamic> trip) async {
+    try {
+      await widget.api.cancelAdminTrip(trip['id']);
+      _reload();
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Viaje cancelado.')));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('No se pudo cancelar. $e')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _ApiList(
+      future: _future,
+      titleBuilder: (item) => 'Viaje #${item['id']} · Bici ${item['bikeId']}',
+      subtitleBuilder: (item) =>
+          '${item['status']} · ${item['startedAt'] ?? ''} · Q.${item['totalAmount'] ?? '0.00'}',
+      bottomPadding: widget.bottomPadding,
+      trailingBuilder: (item) =>
+          item['status']?.toString().toUpperCase() == 'ACTIVE'
+          ? IconButton(
+              tooltip: 'Cancelar viaje',
+              onPressed: () => _cancel(item),
+              icon: const Icon(Icons.cancel_outlined),
+            )
+          : null,
+    );
+  }
+}
+
+class _AnalyticsTab extends StatefulWidget {
+  const _AnalyticsTab({required this.api, required this.bottomPadding});
+
+  final CyclixApiService api;
+  final double bottomPadding;
+
+  @override
+  State<_AnalyticsTab> createState() => _AnalyticsTabState();
+}
+
+class _AnalyticsTabState extends State<_AnalyticsTab> {
+  late Future<List<_MetricGroup>> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = _load();
+  }
+
+  Future<List<_MetricGroup>> _load() async {
+    final results = await Future.wait([
+      widget.api.getBicycleAnalytics(),
+      widget.api.getUserAnalytics(),
+      widget.api.getStationAnalytics(),
+    ]);
+    return [
+      _MetricGroup('Bicicletas', results[0]),
+      _MetricGroup('Usuarios', results[1]),
+      _MetricGroup('Estaciones', results[2]),
+    ];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<_MetricGroup>>(
+      future: _future,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return _AdminError(message: snapshot.error.toString());
+        }
+        final groups = snapshot.data ?? const <_MetricGroup>[];
+        return ListView(
+          padding: EdgeInsets.fromLTRB(16, 16, 16, 24 + widget.bottomPadding),
+          children: [
+            for (final group in groups) ...[
+              _SectionPanel(
+                title: group.title,
+                child: Column(
+                  children: group.data.entries
+                      .where(
+                        (entry) => entry.value is num || entry.value is String,
+                      )
+                      .take(8)
+                      .map(
+                        (entry) => _KeyValueRow(
+                          label: entry.key,
+                          value: entry.value.toString(),
+                        ),
+                      )
+                      .toList(),
+                ),
+              ),
+              const SizedBox(height: 14),
+            ],
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _AuditTab extends StatelessWidget {
+  const _AuditTab({required this.api, required this.bottomPadding});
+
+  final CyclixApiService api;
+  final double bottomPadding;
+
+  @override
+  Widget build(BuildContext context) {
+    return _ApiList(
+      future: api.getAuditLogs(),
+      titleBuilder: (item) => item['eventType']?.toString() ?? '',
+      subtitleBuilder: (item) =>
+          '${item['entityType'] ?? ''} #${item['entityId'] ?? ''} · ${item['createdAt'] ?? ''}',
+      bottomPadding: bottomPadding,
+    );
+  }
+}
+
+class _MetricGroup {
+  const _MetricGroup(this.title, this.data);
+
+  final String title;
+  final Map<String, dynamic> data;
+}
+
 class _ApiList extends StatelessWidget {
   const _ApiList({
     required this.future,
     required this.titleBuilder,
     required this.subtitleBuilder,
     required this.bottomPadding,
+    this.trailingBuilder,
   });
 
   final Future<List<Map<String, dynamic>>> future;
   final String Function(Map<String, dynamic>) titleBuilder;
   final String Function(Map<String, dynamic>) subtitleBuilder;
   final double bottomPadding;
+  final Widget? Function(Map<String, dynamic>)? trailingBuilder;
 
   @override
   Widget build(BuildContext context) {
@@ -643,6 +1088,7 @@ class _ApiList extends StatelessWidget {
               contentPadding: EdgeInsets.zero,
               title: Text(titleBuilder(item)),
               subtitle: Text(subtitleBuilder(item)),
+              trailing: trailingBuilder?.call(item),
             );
           },
         );
@@ -680,6 +1126,64 @@ class _SectionPanel extends StatelessWidget {
           child,
         ],
       ),
+    );
+  }
+}
+
+class _KeyValueRow extends StatelessWidget {
+  const _KeyValueRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(color: CyclixColors.instructionGray),
+            ),
+          ),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+}
+
+class _AdminError extends StatelessWidget {
+  const _AdminError({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(32),
+      children: [
+        const SizedBox(height: 60),
+        const Icon(
+          Icons.admin_panel_settings_outlined,
+          size: 58,
+          color: CyclixColors.primaryBlue,
+        ),
+        const SizedBox(height: 16),
+        Text(
+          'No disponible con tu usuario',
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          message,
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: CyclixColors.instructionGray),
+        ),
+      ],
     );
   }
 }

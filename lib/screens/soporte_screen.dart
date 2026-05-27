@@ -56,14 +56,24 @@ class _SoporteScreenState extends State<SoporteScreen> {
     if (!_formKey.currentState!.validate() || _saving) return;
     setState(() => _saving = true);
     try {
-      await _api.createTicket(
-        category: _category,
-        priority: _priority,
-        title: _title.text.trim(),
-        description: _description.text.trim(),
-        bikeId: widget.bikeId,
-        tripId: widget.tripId,
-      );
+      if (_category == 'BIKE' && widget.bikeId != null) {
+        await _api.createFailureReport(
+          bikeId: widget.bikeId!,
+          tripId: widget.tripId,
+          priority: _priority,
+          title: _title.text.trim(),
+          description: _description.text.trim(),
+        );
+      } else {
+        await _api.createTicket(
+          category: _category,
+          priority: _priority,
+          title: _title.text.trim(),
+          description: _description.text.trim(),
+          bikeId: widget.bikeId,
+          tripId: widget.tripId,
+        );
+      }
       _title.clear();
       _description.clear();
       setState(() => _tickets = _api.getMyTickets());
