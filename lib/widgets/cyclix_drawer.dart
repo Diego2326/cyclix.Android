@@ -6,6 +6,7 @@ import '../screens/admin_api_screen.dart';
 import '../screens/datos_usuario_screen.dart';
 import '../screens/historial_viajes_screen.dart';
 import '../screens/ayuda_screen.dart';
+import '../screens/maintenance_guide_screen.dart';
 import '../screens/puestos_bicicletas_screen.dart';
 import '../screens/soporte_screen.dart';
 import '../screens/wallet_screen.dart';
@@ -40,8 +41,9 @@ class CyclixDrawer extends StatelessWidget {
               padding: EdgeInsets.zero,
               children: [
                 DrawerHeader(
-                  decoration:
-                  const BoxDecoration(color: CyclixColors.primaryBlue),
+                  decoration: const BoxDecoration(
+                    color: CyclixColors.primaryBlue,
+                  ),
                   child: Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -101,9 +103,7 @@ class CyclixDrawer extends StatelessWidget {
                       Navigator.pop(context);
                       Navigator.push(
                         context,
-                        MaterialPageRoute(
-                          builder: (_) => const WalletScreen(),
-                        ),
+                        MaterialPageRoute(builder: (_) => const WalletScreen()),
                       );
                     },
                   ),
@@ -115,8 +115,7 @@ class CyclixDrawer extends StatelessWidget {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) =>
-                          const PuestosBicicletasScreen(),
+                          builder: (_) => const PuestosBicicletasScreen(),
                         ),
                       );
                     },
@@ -132,7 +131,11 @@ class CyclixDrawer extends StatelessWidget {
                     Navigator.pop(context);
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const AyudaScreen()),
+                      MaterialPageRoute(
+                        builder: (_) => isMaintenance
+                            ? const MaintenanceGuideScreen()
+                            : const AyudaScreen(),
+                      ),
                     );
                   },
                 ),
@@ -144,9 +147,7 @@ class CyclixDrawer extends StatelessWidget {
                     Navigator.pop(context);
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (_) => const SoporteScreen(),
-                      ),
+                      MaterialPageRoute(builder: (_) => const SoporteScreen()),
                     );
                   },
                 ),
@@ -178,7 +179,7 @@ class CyclixDrawer extends StatelessWidget {
                     Navigator.pushNamedAndRemoveUntil(
                       context,
                       '/',
-                          (route) => false,
+                      (route) => false,
                     );
                   },
                 ),

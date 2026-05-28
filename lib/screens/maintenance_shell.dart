@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../models/maintenance_order.dart';
 import '../services/cyclix_api_service.dart';
+import '../services/auth_service.dart';
 import '../theme/cyclix_colors.dart';
 import '../widgets/cyclix_drawer.dart';
 
@@ -16,12 +17,22 @@ class MaintenanceShell extends StatefulWidget {
 class _MaintenanceShellState extends State<MaintenanceShell> {
   final CyclixApiService _api = CyclixApiService();
   late Future<List<MaintenanceOrder>> _ordersFuture;
+  String _technicianName = '';
   int _index = 0;
 
   @override
   void initState() {
     super.initState();
     _ordersFuture = _api.getMyMaintenanceOrders();
+    _loadTechnicianName();
+  }
+
+  Future<void> _loadTechnicianName() async {
+    final user = await AuthService().getUserData();
+    if (!mounted) return;
+    setState(() {
+      _technicianName = _displayNameFromUser(user);
+    });
   }
 
   void _refresh() {
@@ -76,6 +87,7 @@ class _MaintenanceShellState extends State<MaintenanceShell> {
             children: [
               MaintenanceHomeScreen(
                 orders: orders,
+                technicianName: _technicianName,
                 onOpenList: () => setState(() => _index = 1),
                 onOpenOrder: _openDetail,
                 onRefresh: _refresh,
@@ -119,12 +131,14 @@ class MaintenanceHomeScreen extends StatelessWidget {
   const MaintenanceHomeScreen({
     super.key,
     required this.orders,
+    required this.technicianName,
     required this.onOpenList,
     required this.onOpenOrder,
     required this.onRefresh,
   });
 
   final List<MaintenanceOrder> orders;
+  final String technicianName;
   final VoidCallback onOpenList;
   final ValueChanged<MaintenanceOrder> onOpenOrder;
   final VoidCallback onRefresh;
@@ -158,7 +172,9 @@ class MaintenanceHomeScreen extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(18, 24, 18, 24),
         children: [
           Text(
-            '¡Hola, Técnico!',
+            technicianName.isEmpty
+                ? 'Bienvenido'
+                : 'Bienvenido, $technicianName',
             style: GoogleFonts.poppins(
               fontSize: 24,
               fontWeight: FontWeight.w800,
@@ -182,6 +198,8 @@ class MaintenanceHomeScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 22),
+          const _MaintenanceInstructionsCard(),
+          const SizedBox(height: 18),
           GridView.count(
             crossAxisCount: 2,
             shrinkWrap: true,
@@ -357,6 +375,86 @@ class _MaintenanceBikeListScreenState extends State<MaintenanceBikeListScreen> {
   }
 
   void _setFilter(String value) => setState(() => _filter = value);
+}
+
+class _MaintenanceInstructionsCard extends StatelessWidget {
+  const _MaintenanceInstructionsCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: CyclixColors.primaryBlue.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: CyclixColors.primaryBlue.withValues(alpha: 0.14),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.info_outline, color: CyclixColors.primaryBlue),
+              const SizedBox(width: 10),
+              Text(
+                'Indicaciones del flujo',
+                style: GoogleFonts.poppins(
+                  fontWeight: FontWeight.w700,
+                  color: CyclixColors.primaryBlue,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          const _InstructionStep(
+            text:
+                'Abre una orden asignada y revisa bicicleta, estación y prioridad.',
+          ),
+          const _InstructionStep(
+            text: 'Registra diagnóstico, estado, ubicación y tiempo estimado.',
+          ),
+          const _InstructionStep(
+            text:
+                'Finaliza indicando si la bicicleta queda disponible o fuera de servicio.',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InstructionStep extends StatelessWidget {
+  const _InstructionStep({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(top: 6),
+            child: Icon(Icons.circle, size: 6, color: CyclixColors.accentGreen),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: GoogleFonts.poppins(
+                color: CyclixColors.textDark,
+                fontSize: 12.5,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class MaintenanceDetailScreen extends StatefulWidget {
@@ -1550,6 +1648,21 @@ InputDecoration _inputDecoration(String label) {
       borderSide: const BorderSide(color: CyclixColors.primaryBlue),
     ),
   );
+}
+
+String _displayNameFromUser(Map<String, dynamic>? user) {
+  if (user == null) return '';
+  final fullName = user['fullName']?.toString().trim();
+  if (fullName != null && fullName.isNotEmpty) return fullName;
+
+  final firstName = user['firstName']?.toString().trim() ?? '';
+  final lastName = user['lastName']?.toString().trim() ?? '';
+  final combined = '$firstName $lastName'.trim();
+  if (combined.isNotEmpty) return combined;
+
+  final email = user['email']?.toString().trim() ?? '';
+  if (email.isEmpty) return '';
+  return email.split('@').first;
 }
 
 String _statusLabel(String value) {
