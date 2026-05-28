@@ -1,6 +1,5 @@
-import 'package:flutter/material.dart';
-
 import '../services/cyclix_api_service.dart';
+import 'package:flutter/material.dart';
 import '../theme/cyclix_colors.dart';
 import '../widgets/cyclix_header.dart';
 
@@ -37,7 +36,14 @@ class _WalletScreenState extends State<WalletScreen> {
   Future<void> _showRechargeDialog(Map<String, dynamic> wallet) async {
     final controller = TextEditingController();
     String selectedMethod = 'TEST';
+    String finalSelectedMethod = 'TEST';
     String? amountError;
+
+    final cardNumberController = TextEditingController();
+    final cardNameController = TextEditingController();
+    final cardDateController = TextEditingController();
+    final cardCvvController = TextEditingController();
+    final paypalEmailController = TextEditingController();
 
     final amount = await showModalBottomSheet<double>(
       context: context,
@@ -58,6 +64,7 @@ class _WalletScreenState extends State<WalletScreen> {
                 });
                 return;
               }
+              finalSelectedMethod = selectedMethod;
               Navigator.pop(context, parsed);
             }
 
@@ -138,6 +145,7 @@ class _WalletScreenState extends State<WalletScreen> {
                       onTap: () =>
                           setSheetState(() => selectedMethod = 'PAYPAL'),
                     ),
+
                     _RechargeMethodTile(
                       title: 'Recarga de prueba',
                       subtitle: 'Usa el endpoint de pruebas del API',
@@ -145,7 +153,100 @@ class _WalletScreenState extends State<WalletScreen> {
                       selected: selectedMethod == 'TEST',
                       onTap: () => setSheetState(() => selectedMethod = 'TEST'),
                     ),
+
+                    if (selectedMethod == 'VISA' ||
+                        selectedMethod == 'MASTERCARD') ...[
+                      const SizedBox(height: 14),
+
+                      Text(
+                        selectedMethod == 'VISA'
+                            ? 'Datos de tarjeta Visa'
+                            : 'Datos de tarjeta MasterCard',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      TextField(
+                        controller: cardNumberController,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Número de tarjeta',
+                          hintText: '0000 0000 0000 0000',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      TextField(
+                        controller: cardNameController,
+                        decoration: const InputDecoration(
+                          labelText: 'Nombre del titular',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: cardDateController,
+                              decoration: const InputDecoration(
+                                labelText: 'Fecha',
+                                hintText: 'MM/AA',
+                                border: OutlineInputBorder(),
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(width: 10),
+
+                          Expanded(
+                            child: TextField(
+                              controller: cardCvvController,
+                              keyboardType: TextInputType.number,
+                              decoration: const InputDecoration(
+                                labelText: 'CVV',
+                                border: OutlineInputBorder(),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+
+                    if (selectedMethod == 'PAYPAL') ...[
+                      const SizedBox(height: 14),
+
+                      const Text(
+                        'Cuenta PayPal',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      TextField(
+                        controller: paypalEmailController,
+                        keyboardType: TextInputType.emailAddress,
+                        decoration: const InputDecoration(
+                          labelText: 'Correo PayPal',
+                          hintText: 'correo@paypal.com',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ],
+
                     const SizedBox(height: 18),
+
                     FilledButton.icon(
                       onPressed: submit,
                       style: FilledButton.styleFrom(
@@ -159,7 +260,9 @@ class _WalletScreenState extends State<WalletScreen> {
                       icon: const Icon(Icons.add_card_outlined),
                       label: const Text('Confirmar recarga'),
                     ),
+
                     const SizedBox(height: 8),
+
                     TextButton(
                       onPressed: () => Navigator.pop(context),
                       child: const Text('Cancelar'),
@@ -172,28 +275,34 @@ class _WalletScreenState extends State<WalletScreen> {
         );
       },
     );
-    controller.dispose();
 
     if (amount == null || amount <= 0 || _recharging) return;
 
     setState(() => _recharging = true);
+
     try {
       await _api.topUpMyWallet(
         amount: amount,
-        paymentMethod: _apiPaymentMethod(selectedMethod),
+        paymentMethod: _apiPaymentMethod(finalSelectedMethod),
       );
+
       if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Saldo recargado correctamente.')),
       );
+
       setState(() => _future = _load());
     } catch (e) {
       if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('No se pudo recargar el wallet. $e')),
       );
     } finally {
-      if (mounted) setState(() => _recharging = false);
+      if (mounted) {
+        setState(() => _recharging = false);
+      }
     }
   }
 
