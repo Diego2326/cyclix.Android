@@ -27,7 +27,8 @@ El `.xcodeproj` se genera desde un script para que sea fácil de reconstruir:
 
 ```bash
 cd watchos/CyclixWatch
-GEM_HOME=../../.vendor/gems GEM_PATH=../../.vendor/gems ruby scripts/generate_project.rb
+gem install xcodeproj
+ruby scripts/generate_project.rb
 ```
 
 ## Abrir en Xcode
