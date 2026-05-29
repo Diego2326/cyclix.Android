@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../services/cyclix_api_service.dart';
 import '../theme/cyclix_colors.dart';
 import '../widgets/cyclix_header.dart';
+import '../widgets/cyclix_subscription_cta.dart';
+import 'subscriptions_screen.dart';
 
 class WalletScreen extends StatefulWidget {
   const WalletScreen({super.key, this.embeddedInShell = false});
@@ -27,6 +29,12 @@ class _WalletScreenState extends State<WalletScreen> {
   Future<void> _reload() async {
     setState(() => _future = _load());
     await _future;
+  }
+
+  Future<void> _openSubscriptions() async {
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const SubscriptionsScreen()));
   }
 
   String _money(Object? value, {String currency = 'GTQ'}) {
@@ -295,6 +303,15 @@ class _WalletScreenState extends State<WalletScreen> {
                       ),
                     ],
                   ),
+                ),
+                const SizedBox(height: 18),
+                CyclixSubscriptionCard(
+                  title: 'Ahorra minutos antes del cobro',
+                  subtitle:
+                      'Explora planes que cubren parte de tus viajes antes de que el monto llegue al wallet.',
+                  actionLabel: 'Ver planes',
+                  icon: Icons.workspace_premium_outlined,
+                  onTap: _openSubscriptions,
                 ),
                 const SizedBox(height: 24),
                 Text(

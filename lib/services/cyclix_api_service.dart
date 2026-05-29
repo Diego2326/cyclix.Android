@@ -296,6 +296,62 @@ class CyclixApiService {
     return _asMapList(data);
   }
 
+  Future<List<Map<String, dynamic>>> getPublicSubscriptionPlans() async {
+    final data = await get('/subscriptions/plans');
+    return _asMapList(data);
+  }
+
+  Future<List<Map<String, dynamic>>> getAvailableSubscriptionPlans() async {
+    try {
+      return await getPublicSubscriptionPlans();
+    } on CyclixApiException catch (e) {
+      if (e.statusCode != 403 &&
+          e.statusCode != 404 &&
+          e.statusCode != 405 &&
+          e.statusCode != 501) {
+        rethrow;
+      }
+    }
+    return getSubscriptionPlans();
+  }
+
+  Future<Map<String, dynamic>?> getMyActiveSubscription() async {
+    final data = await get('/subscriptions/my/active');
+    if (data == null) return null;
+    return _asMap(data);
+  }
+
+  Future<List<Map<String, dynamic>>> getMySubscriptions() async {
+    final data = await get('/subscriptions/my');
+    return _asMapList(data);
+  }
+
+  Future<Map<String, dynamic>> purchaseSubscription({
+    required Object planId,
+    bool autoRenew = false,
+  }) async {
+    final data = await post('/subscriptions/purchase', {
+      'planId': int.tryParse(planId.toString()) ?? planId,
+      'autoRenew': autoRenew,
+    });
+    return _asMap(data);
+  }
+
+  Future<Map<String, dynamic>> cancelMySubscription(Object id) async {
+    final data = await post('/subscriptions/my/$id/cancel', {});
+    return _asMap(data);
+  }
+
+  Future<Map<String, dynamic>> updateMySubscriptionAutoRenew({
+    required Object id,
+    required bool autoRenew,
+  }) async {
+    final data = await patch('/subscriptions/my/$id/auto-renew', {
+      'autoRenew': autoRenew,
+    });
+    return _asMap(data);
+  }
+
   Future<List<Map<String, dynamic>>> getSubscriptionPlans() async {
     final data = await get('/admin/subscriptions/plans');
     return _asMapList(data);

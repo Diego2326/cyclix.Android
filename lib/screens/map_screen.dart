@@ -11,6 +11,8 @@ import '../models/rental_station.dart';
 import '../services/cyclix_api_service.dart';
 import '../theme/cyclix_colors.dart';
 import 'qr_scan_screen.dart';
+import 'subscriptions_screen.dart';
+import '../widgets/cyclix_subscription_cta.dart';
 
 /// Ciudad de Guatemala como vista inicial (ajusta si el backend envia otra region).
 const LatLng _kInitialCenter = LatLng(14.6349, -90.5069);
@@ -73,16 +75,21 @@ class _MapScreenState extends State<MapScreen> {
     return _stations.map((s) {
       return Marker(
         point: s.position,
-        width: 48,
-        height: 48,
+        width: 52,
+        height: 60,
+        alignment: Alignment.bottomCenter,
         child: Tooltip(
           message: s.name,
           child: GestureDetector(
+            behavior: HitTestBehavior.translucent,
             onTap: () => _onStationTapped(s),
-            child: const Icon(
-              Icons.location_on,
-              color: CyclixColors.brandGreen,
-              size: 44,
+            child: const Align(
+              alignment: Alignment.bottomCenter,
+              child: Icon(
+                Icons.location_on,
+                color: CyclixColors.brandGreen,
+                size: 44,
+              ),
             ),
           ),
         ),
@@ -419,6 +426,12 @@ class _MapScreenState extends State<MapScreen> {
     await _showRouteInApp(station);
   }
 
+  Future<void> _openSubscriptions() async {
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const SubscriptionsScreen()));
+  }
+
   void _onStationTapped(RentalStation s) {
     final dist = _distanceTo(s);
     showModalBottomSheet<void>(
@@ -532,6 +545,15 @@ class _MapScreenState extends State<MapScreen> {
                 ],
               ),
             ],
+          ),
+        ),
+        Positioned(
+          top: 16,
+          right: 16,
+          child: CyclixSubscriptionPill(
+            label: 'Suscripciones',
+            subtitle: 'Cubre minutos',
+            onTap: _openSubscriptions,
           ),
         ),
         if (_navigatingTo != null)

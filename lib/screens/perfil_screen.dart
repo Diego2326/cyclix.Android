@@ -2,8 +2,11 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+
+import 'subscriptions_screen.dart';
 import '../services/auth_service.dart';
 import '../theme/cyclix_colors.dart';
+import '../widgets/cyclix_subscription_cta.dart';
 
 class PerfilScreen extends StatefulWidget {
   const PerfilScreen({super.key});
@@ -31,6 +34,12 @@ class _PerfilScreenState extends State<PerfilScreen> {
       userData = data;
       _profilePhotoPath = photoPath;
     });
+  }
+
+  Future<void> _openSubscriptions() async {
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const SubscriptionsScreen()));
   }
 
   @override
@@ -161,6 +170,16 @@ class _PerfilScreenState extends State<PerfilScreen> {
                       "ACTIVO",
                     ),
                   ]),
+                  const SizedBox(height: 20),
+                  CyclixSubscriptionCard(
+                    title: 'Suscripciones para tus viajes',
+                    subtitle:
+                        'Descubre planes que descuentan minutos antes del pricing y del cobro al wallet.',
+                    actionLabel: 'Abrir suscripciones',
+                    icon: Icons.workspace_premium_outlined,
+                    emphasized: false,
+                    onTap: _openSubscriptions,
+                  ),
                   const SizedBox(height: 20),
                 ],
               ),

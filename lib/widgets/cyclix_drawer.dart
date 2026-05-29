@@ -7,6 +7,7 @@ import '../screens/historial_viajes_screen.dart';
 import '../screens/ayuda_screen.dart';
 import '../screens/puestos_bicicletas_screen.dart';
 import '../screens/soporte_screen.dart';
+import '../screens/subscriptions_screen.dart';
 import '../screens/wallet_screen.dart';
 import '../services/auth_service.dart';
 
@@ -79,6 +80,19 @@ class CyclixDrawer extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => const WalletScreen()),
+                );
+              },
+            ),
+            _DrawerTile(
+              icon: Icons.workspace_premium_outlined,
+              title: 'Suscripciones',
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const SubscriptionsScreen(),
+                  ),
                 );
               },
             ),
