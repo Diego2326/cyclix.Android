@@ -10,7 +10,7 @@ Funciones incluidas:
 
 - login con el mismo API de Cyclix
 - saldo de wallet
-- estacion cercana usando ubicacion del reloj
+- estacion disponible sin bloquear el inicio si el reloj no entrega ubicacion
 - viaje activo
 - finalizar viaje
 - desbloqueo por NFC si el reloj tiene NFC disponible para apps

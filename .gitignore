@@ -2,3 +2,8 @@ build/
 .dart_tool/
 .flutter-plugins
 .flutter-plugins-dependencies
+.DS_Store
+.vendor/
+Repositorio_Cyclix-main/
+**/xcuserdata/
+**/*.xcuserstate

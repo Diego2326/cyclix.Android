@@ -61,7 +61,7 @@ class CyclixBottomNav extends StatelessWidget {
                 Icons.account_balance_wallet,
                 color: CyclixColors.primaryBlue,
               ),
-              label: 'Wallet',
+              label: 'Billetera',
             ),
             NavigationDestination(
               icon: Icon(Icons.person_outline, color: CyclixColors.primaryBlue),

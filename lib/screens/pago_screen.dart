@@ -62,7 +62,7 @@ class PagoScreen extends StatelessWidget {
                   _SummaryRow('Subtotal base', _money(trip['baseFareApplied'])),
                   _SummaryRow('Extras', _money(trip['extraAmount'])),
                   _SummaryRow(
-                    'Cobrado al wallet',
+                    'Cobrado a la billetera',
                     _money(trip['walletChargedAmount'] ?? trip['totalAmount']),
                     highlighted: true,
                   ),
@@ -70,7 +70,7 @@ class PagoScreen extends StatelessWidget {
               ),
               const SizedBox(height: 28),
               Text(
-                'El pago se descontó del saldo de tu wallet.',
+                'El pago se descontó del saldo de tu billetera.',
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: CyclixColors.instructionGray,

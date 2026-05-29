@@ -28,7 +28,7 @@ class _SoporteScreenState extends State<SoporteScreen> {
   final _title = TextEditingController();
   final _description = TextEditingController();
 
-  late String _category = widget.initialCategory;
+  late String _category;
   late String _priority = widget.initialPriority;
   late Future<List<Map<String, dynamic>>> _tickets = _api.getMyTickets();
   bool _saving = false;
@@ -45,6 +45,77 @@ class _SoporteScreenState extends State<SoporteScreen> {
 
   static const _priorities = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
 
+  static const _categoryLabels = {
+    'BIKE': 'Bicicleta',
+    'APP': 'Aplicación',
+    'PAYMENT': 'Pago',
+    'ACCOUNT': 'Cuenta',
+    'TRIP': 'Viaje',
+    'EMERGENCY': 'Emergencia',
+    'OTHER': 'Otro',
+  };
+
+  static const _priorityLabels = {
+    'LOW': 'Baja',
+    'MEDIUM': 'Media',
+    'HIGH': 'Alta',
+    'CRITICAL': 'Crítica',
+  };
+
+  static const _statusLabels = {
+    'OPEN': 'Abierto',
+    'PENDING': 'Pendiente',
+    'IN_PROGRESS': 'En progreso',
+    'WAITING_USER': 'Esperando respuesta',
+    'RESOLVED': 'Resuelto',
+    'CLOSED': 'Cerrado',
+  };
+
+  String _categoryLabel(Object? value) {
+    final key = value?.toString();
+    return _categoryLabels[key] ?? key ?? '';
+  }
+
+  String _priorityLabel(Object? value) {
+    final key = value?.toString();
+    return _priorityLabels[key] ?? key ?? '';
+  }
+
+  String _statusLabel(Object? value) {
+    final key = value?.toString();
+    return _statusLabels[key] ?? key ?? '';
+  }
+
+  List<String> get _availableCategories {
+    if (widget.bikeId != null) return _categories;
+    return _categories.where((category) => category != 'BIKE').toList();
+  }
+
+  String _errorMessage(Object error) {
+    if (error is CyclixApiException) {
+      return error.message;
+    }
+    final text = error.toString();
+    if (text.contains('SocketException') ||
+        text.contains('Connection refused') ||
+        text.contains('Failed host lookup')) {
+      return 'No se pudo conectar con la API. Revisa tu conexión.';
+    }
+    if (text.contains('FormatException')) {
+      return 'La API devolvió una respuesta inesperada. Inténtalo de nuevo.';
+    }
+    return 'No se pudo crear el reporte. Inténtalo de nuevo.';
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    final categories = _availableCategories;
+    _category = categories.contains(widget.initialCategory)
+        ? widget.initialCategory
+        : 'APP';
+  }
+
   @override
   void dispose() {
     _title.dispose();
@@ -54,6 +125,17 @@ class _SoporteScreenState extends State<SoporteScreen> {
 
   Future<void> _createTicket() async {
     if (!_formKey.currentState!.validate() || _saving) return;
+    if (_category == 'BIKE' && widget.bikeId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Para reportar una bicicleta, primero debes seleccionar una bicicleta.',
+          ),
+        ),
+      );
+      return;
+    }
+
     setState(() => _saving = true);
     try {
       if (_category == 'BIKE' && widget.bikeId != null) {
@@ -79,13 +161,13 @@ class _SoporteScreenState extends State<SoporteScreen> {
       setState(() => _tickets = _api.getMyTickets());
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ticket creado correctamente.')),
+        const SnackBar(content: Text('Reporte creado correctamente.')),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(e.toString())));
+      ).showSnackBar(SnackBar(content: Text(_errorMessage(e))));
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -116,11 +198,11 @@ class _SoporteScreenState extends State<SoporteScreen> {
                 children: [
                   DropdownButtonFormField<String>(
                     initialValue: _category,
-                    items: _categories
+                    items: _availableCategories
                         .map(
                           (value) => DropdownMenuItem(
                             value: value,
-                            child: Text(value),
+                            child: Text(_categoryLabel(value)),
                           ),
                         )
                         .toList(),
@@ -137,7 +219,7 @@ class _SoporteScreenState extends State<SoporteScreen> {
                         .map(
                           (value) => DropdownMenuItem(
                             value: value,
-                            child: Text(value),
+                            child: Text(_priorityLabel(value)),
                           ),
                         )
                         .toList(),
@@ -192,14 +274,14 @@ class _SoporteScreenState extends State<SoporteScreen> {
                             ),
                           )
                         : const Icon(Icons.send_outlined),
-                    label: const Text('Crear ticket'),
+                    label: const Text('Crear reporte'),
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 28),
             Text(
-              'Mis tickets',
+              'Mis reportes',
               style: Theme.of(
                 context,
               ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
@@ -215,12 +297,15 @@ class _SoporteScreenState extends State<SoporteScreen> {
                   );
                 }
                 if (snapshot.hasError) {
-                  return Text(snapshot.error.toString());
+                  return Text(
+                    _errorMessage(snapshot.error!),
+                    style: const TextStyle(color: CyclixColors.instructionGray),
+                  );
                 }
 
                 final tickets = snapshot.data ?? [];
                 if (tickets.isEmpty) {
-                  return const Text('No tienes tickets aún.');
+                  return const Text('No tienes reportes aún.');
                 }
 
                 return Column(
@@ -234,7 +319,7 @@ class _SoporteScreenState extends State<SoporteScreen> {
                           ),
                           title: Text(ticket['title']?.toString() ?? ''),
                           subtitle: Text(
-                            '${ticket['category']} · ${ticket['priority']} · ${ticket['status']}',
+                            '${_categoryLabel(ticket['category'])} · ${_priorityLabel(ticket['priority'])} · ${_statusLabel(ticket['status'])}',
                           ),
                         ),
                       )

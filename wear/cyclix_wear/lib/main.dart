@@ -113,6 +113,7 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       );
     } catch (e) {
+      if (!mounted) return;
       setState(() => _error = e.toString());
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -184,25 +185,20 @@ class _WearHomeScreenState extends State<WearHomeScreen> {
   bool _busy = false;
 
   Future<WearSummary> _load() async {
-    final results = await Future.wait<dynamic>([
-      widget.api.getWallet(),
-      widget.api.getMyTrips(),
-      widget.api.getStations(),
-      widget.api.checkNfcAvailability(),
-    ]);
-
-    final wallet = Map<String, dynamic>.from(results[0] as Map);
-    final trips = List<Map<String, dynamic>>.from(results[1] as List);
-    final stations = List<Map<String, dynamic>>.from(results[2] as List);
-    final nfcEnabled = results[3] as bool;
+    final wallet = await _safeMap(
+      widget.api.getWallet,
+      fallback: const {'balance': 0, 'currency': 'GTQ'},
+    );
+    final trips = await _safeList(widget.api.getMyTrips);
+    final stations = await _safeList(widget.api.getStations);
     final activeTrip = _findActiveTrip(trips);
-    final nearestStation = await _nearestStation(stations);
+    final nearestStation = _firstStation(stations);
 
     return WearSummary(
       wallet: wallet,
       activeTrip: activeTrip,
       nearestStation: nearestStation,
-      nfcEnabled: nfcEnabled,
+      nfcEnabled: Platform.isAndroid,
     );
   }
 
@@ -312,7 +308,7 @@ class _WearHomeScreenState extends State<WearHomeScreen> {
                   const SizedBox(height: 8),
                   _InfoTile(
                     icon: Icons.location_on_outlined,
-                    label: 'Estacion cercana',
+                    label: 'Estacion disponible',
                     value: summary.nearestStation?.name ?? 'No disponible',
                     subtitle: summary.nearestStation?.distanceText,
                   ),
@@ -320,9 +316,7 @@ class _WearHomeScreenState extends State<WearHomeScreen> {
                   if (activeTrip == null)
                     _ActionTile(
                       icon: Icons.nfc,
-                      label: summary.nfcEnabled
-                          ? 'Desbloquear con NFC'
-                          : 'NFC no disponible',
+                      label: 'Desbloquear con NFC',
                       busy: _busy,
                       onTap: summary.nfcEnabled ? _scanNfc : null,
                     )
@@ -350,10 +344,32 @@ class _WearHomeScreenState extends State<WearHomeScreen> {
   }
 }
 
+Future<Map<String, dynamic>> _safeMap(
+  Future<Map<String, dynamic>> Function() loader, {
+  required Map<String, dynamic> fallback,
+}) async {
+  try {
+    return await loader();
+  } catch (_) {
+    return fallback;
+  }
+}
+
+Future<List<Map<String, dynamic>>> _safeList(
+  Future<List<Map<String, dynamic>>> Function() loader,
+) async {
+  try {
+    return await loader();
+  } catch (_) {
+    return const [];
+  }
+}
+
 class CyclixWearApi {
   static const baseUrl = 'https://api.cyclix.site/api/v1';
   static const _tokenKey = 'cyclix_token';
   static const _emailKey = 'cyclix_email';
+  static const _requestTimeout = Duration(seconds: 15);
 
   Future<bool> hasToken() async {
     final prefs = await SharedPreferences.getInstance();
@@ -361,11 +377,13 @@ class CyclixWearApi {
   }
 
   Future<void> login({required String email, required String password}) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/auth/login'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'email': email, 'password': password}),
-    );
+    final response = await http
+        .post(
+          Uri.parse('$baseUrl/auth/login'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'email': email, 'password': password}),
+        )
+        .timeout(_requestTimeout);
     final data = _decode(response);
     if (data is! Map || data['token'] == null) {
       throw Exception('Respuesta de login invalida.');
@@ -463,28 +481,31 @@ class CyclixWearApi {
   }
 
   Future<dynamic> _get(String path) async {
-    final response = await http.get(
-      Uri.parse('$baseUrl$path'),
-      headers: await _headers(),
-    );
+    final response = await http
+        .get(Uri.parse('$baseUrl$path'), headers: await _headers())
+        .timeout(_requestTimeout);
     return _decode(response);
   }
 
   Future<dynamic> _post(String path, Map<String, dynamic> body) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl$path'),
-      headers: await _headers(),
-      body: jsonEncode(body),
-    );
+    final response = await http
+        .post(
+          Uri.parse('$baseUrl$path'),
+          headers: await _headers(),
+          body: jsonEncode(body),
+        )
+        .timeout(_requestTimeout);
     return _decode(response);
   }
 
   Future<dynamic> _put(String path, Map<String, dynamic> body) async {
-    final response = await http.put(
-      Uri.parse('$baseUrl$path'),
-      headers: await _headers(),
-      body: jsonEncode(body),
-    );
+    final response = await http
+        .put(
+          Uri.parse('$baseUrl$path'),
+          headers: await _headers(),
+          body: jsonEncode(body),
+        )
+        .timeout(_requestTimeout);
     return _decode(response);
   }
 
@@ -514,7 +535,7 @@ class CyclixWearApi {
 
   dynamic _decode(http.Response response) {
     final text = utf8.decode(response.bodyBytes);
-    final dynamic decoded = text.isEmpty ? null : jsonDecode(text);
+    final dynamic decoded = text.isEmpty ? null : _tryDecodeJson(text);
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return decoded;
     }
@@ -525,7 +546,18 @@ class CyclixWearApi {
             'Error ${response.statusCode}',
       );
     }
+    if (text.trim().isNotEmpty) {
+      throw Exception('Error ${response.statusCode}: ${text.trim()}');
+    }
     throw Exception('Error ${response.statusCode}');
+  }
+
+  dynamic _tryDecodeJson(String text) {
+    try {
+      return jsonDecode(text);
+    } catch (_) {
+      return text;
+    }
   }
 
   Future<Map<String, dynamic>> _bikeFromTag(String raw) async {
@@ -877,60 +909,13 @@ Map<String, dynamic>? _findActiveTrip(List<Map<String, dynamic>> trips) {
   return null;
 }
 
-Future<NearestStation?> _nearestStation(
-  List<Map<String, dynamic>> stations,
-) async {
+NearestStation? _firstStation(List<Map<String, dynamic>> stations) {
   if (stations.isEmpty) return null;
-  GeoPoint? current;
-  try {
-    final enabled = await Geolocator.isLocationServiceEnabled();
-    if (enabled) {
-      var permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-      }
-      if (permission == LocationPermission.always ||
-          permission == LocationPermission.whileInUse) {
-        final position = await Geolocator.getCurrentPosition(
-          locationSettings: const LocationSettings(
-            accuracy: LocationAccuracy.low,
-            timeLimit: Duration(seconds: 8),
-          ),
-        );
-        current = GeoPoint(position.latitude, position.longitude);
-      }
-    }
-  } catch (_) {
-    current = null;
-  }
-
-  if (current == null) {
-    final first = stations.first;
-    return NearestStation(
-      name: first['nombre']?.toString() ?? 'Estacion',
-      distanceMeters: 0,
-    );
-  }
-
-  NearestStation? nearest;
-  for (final station in stations) {
-    final lat = _asDouble(station['latitud'] ?? station['latitude']);
-    final lng = _asDouble(station['longitud'] ?? station['longitude']);
-    if (lat == null || lng == null) continue;
-    final distance = Geolocator.distanceBetween(
-      current.latitude,
-      current.longitude,
-      lat,
-      lng,
-    );
-    if (nearest == null || distance < nearest.distanceMeters) {
-      nearest = NearestStation(
-        name: station['nombre']?.toString() ?? 'Estacion',
-        distanceMeters: distance,
-      );
-    }
-  }
-  return nearest;
+  final first = stations.first;
+  return NearestStation(
+    name: first['nombre']?.toString() ?? 'Estacion',
+    distanceMeters: 0,
+  );
 }
 
 List<Map<String, dynamic>> _asMapList(dynamic data) {
@@ -944,8 +929,6 @@ List<Map<String, dynamic>> _asMapList(dynamic data) {
 }
 
 int _asInt(Object? value) => int.tryParse(value?.toString() ?? '') ?? 0;
-
-double? _asDouble(Object? value) => double.tryParse(value?.toString() ?? '');
 
 String _money(Object? value) {
   final number = num.tryParse(value?.toString() ?? '') ?? 0;

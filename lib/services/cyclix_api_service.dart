@@ -68,7 +68,14 @@ class CyclixApiService {
 
   dynamic _decodeResponse(http.Response response) {
     final text = utf8.decode(response.bodyBytes);
-    final dynamic decoded = text.isEmpty ? null : jsonDecode(text);
+    dynamic decoded;
+    if (text.isNotEmpty) {
+      try {
+        decoded = jsonDecode(text);
+      } on FormatException {
+        decoded = null;
+      }
+    }
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       if (decoded is Map<String, dynamic> && decoded.containsKey('success')) {
@@ -78,10 +85,18 @@ class CyclixApiService {
           statusCode: response.statusCode,
         );
       }
-      return decoded;
+      return decoded ?? text;
     }
 
-    String message = 'Error ${response.statusCode} al comunicarse con Cyclix.';
+    String message = switch (response.statusCode) {
+      400 => 'Revisa los datos del reporte e inténtalo de nuevo.',
+      401 => 'Tu sesión venció. Inicia sesión nuevamente.',
+      403 => 'No tienes permisos para realizar esta acción.',
+      404 => 'No se encontró el recurso solicitado.',
+      409 => 'La solicitud no se pudo completar por un conflicto de datos.',
+      >= 500 => 'El servidor no pudo procesar la solicitud.',
+      _ => 'No se pudo completar la solicitud.',
+    };
     if (decoded is Map<String, dynamic>) {
       message =
           decoded['message']?.toString() ??
@@ -216,6 +231,31 @@ class CyclixApiService {
     return _asMapList(data);
   }
 
+  Future<List<Map<String, dynamic>>> getAdminTickets() async {
+    final data = await get('/admin/support/tickets');
+    return _asMapList(data);
+  }
+
+  Future<Map<String, dynamic>> updateAdminTicketStatus({
+    required Object id,
+    required String status,
+  }) async {
+    final data = await put('/admin/support/tickets/$id/status', {
+      'status': status,
+    });
+    return _asMap(data);
+  }
+
+  Future<Map<String, dynamic>> updateAdminTicketPriority({
+    required Object id,
+    required String priority,
+  }) async {
+    final data = await put('/admin/support/tickets/$id/priority', {
+      'priority': priority,
+    });
+    return _asMap(data);
+  }
+
   Future<Map<String, dynamic>> createTicket({
     required String category,
     required String priority,
@@ -235,7 +275,7 @@ class CyclixApiService {
       'title': title,
       'description': description,
     });
-    return _asMap(data);
+    return data is Map ? _asMap(data) : <String, dynamic>{};
   }
 
   Future<List<Map<String, dynamic>>> getMyFailureReports() async {
@@ -257,7 +297,7 @@ class CyclixApiService {
       'title': title,
       'description': description,
     });
-    return _asMap(data);
+    return data is Map ? _asMap(data) : <String, dynamic>{};
   }
 
   Future<List<Map<String, dynamic>>> getPricingRules() async {
@@ -299,6 +339,87 @@ class CyclixApiService {
   Future<List<Map<String, dynamic>>> getSubscriptionPlans() async {
     final data = await get('/admin/subscriptions/plans');
     return _asMapList(data);
+  }
+
+  Future<List<Map<String, dynamic>>> getSubscriptionPlansForUser() async {
+    try {
+      final data = await get('/subscriptions/plans');
+      final plans = _asMapList(data);
+      if (plans.isNotEmpty) return plans;
+    } on CyclixApiException {
+      // El API actual expone planes solo para admin. La app mantiene catalogo
+      // demo para usuarios mientras backend habilita consulta publica.
+    }
+
+    try {
+      return await getSubscriptionPlans();
+    } on CyclixApiException {
+      return _demoSubscriptionPlans;
+    }
+  }
+
+  Future<Map<String, dynamic>> createSubscriptionPlan({
+    required String name,
+    required double monthlyPrice,
+    required int includedHours,
+    required bool active,
+  }) async {
+    final data = await post('/admin/subscriptions/plans', {
+      'name': name,
+      'monthlyPrice': monthlyPrice,
+      'includedHours': includedHours,
+      'active': active,
+    });
+    return _asMap(data);
+  }
+
+  Future<Map<String, dynamic>> updateSubscriptionPlan({
+    required Object id,
+    required String name,
+    required double monthlyPrice,
+    required int includedHours,
+    required bool active,
+  }) async {
+    final data = await put('/admin/subscriptions/plans/$id', {
+      'name': name,
+      'monthlyPrice': monthlyPrice,
+      'includedHours': includedHours,
+      'active': active,
+    });
+    return _asMap(data);
+  }
+
+  Future<Map<String, dynamic>> assignSubscriptionPlan({
+    required Object userId,
+    required Object planId,
+    required DateTime startsAt,
+    required DateTime expiresAt,
+    required bool autoRenew,
+  }) async {
+    final data = await post('/admin/subscriptions/assign', {
+      'userId': int.tryParse(userId.toString()) ?? userId,
+      'planId': int.tryParse(planId.toString()) ?? planId,
+      'startsAt': _localIso(startsAt),
+      'expiresAt': _localIso(expiresAt),
+      'autoRenew': autoRenew,
+    });
+    return _asMap(data);
+  }
+
+  Future<Map<String, dynamic>> requestSubscriptionPlan({
+    required Map<String, dynamic> plan,
+    required bool autoRenew,
+  }) {
+    final name = plan['name']?.toString() ?? 'Plan Cyclix';
+    final price = plan['monthlyPrice']?.toString() ?? '0.00';
+    final hours = plan['includedHours']?.toString() ?? '0';
+    return createTicket(
+      category: 'PAYMENT',
+      priority: 'MEDIUM',
+      title: 'Solicitud de suscripcion: $name',
+      description:
+          'Deseo contratar $name por Q.$price al mes. Incluye $hours horas. Auto renovacion: ${autoRenew ? 'si' : 'no'}.',
+    );
   }
 
   Future<List<Map<String, dynamic>>> getAdminTrips() async {
@@ -654,6 +775,41 @@ class CyclixApiService {
     return _ClockTime(hour, minute);
   }
 }
+
+String _localIso(DateTime value) {
+  final local = value.toLocal();
+  String two(int number) => number.toString().padLeft(2, '0');
+  return '${local.year.toString().padLeft(4, '0')}-'
+      '${two(local.month)}-${two(local.day)}T'
+      '${two(local.hour)}:${two(local.minute)}:${two(local.second)}';
+}
+
+const List<Map<String, dynamic>> _demoSubscriptionPlans = [
+  {
+    'id': 1,
+    'name': 'Plan Basico 20h',
+    'monthlyPrice': 100.00,
+    'includedHours': 20,
+    'active': true,
+    'demo': true,
+  },
+  {
+    'id': 2,
+    'name': 'Plan Plus 50h',
+    'monthlyPrice': 200.00,
+    'includedHours': 50,
+    'active': true,
+    'demo': true,
+  },
+  {
+    'id': 3,
+    'name': 'Plan Pro 100h',
+    'monthlyPrice': 350.00,
+    'includedHours': 100,
+    'active': true,
+    'demo': true,
+  },
+];
 
 class _ClockTime {
   const _ClockTime(this.hour, this.minute);
