@@ -134,79 +134,78 @@ class _BikeDetailScreenState extends State<BikeDetailScreen> {
       backgroundColor: Colors.white,
       appBar: const CyclixHeader(showBack: true),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const SizedBox(height: 16),
-              Text(
-                'Bicicleta #${bike.id}',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final compact = constraints.maxHeight < 660;
+            final iconSize = compact ? 108.0 : 150.0;
+
+            return ListView(
+              padding: EdgeInsets.fromLTRB(
+                24,
+                compact ? 12 : 16,
+                24,
+                16 + MediaQuery.paddingOf(context).bottom,
               ),
-              const SizedBox(height: 24),
-              Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.pedal_bike,
-                      size: 150,
-                      color: Colors.black87,
-                    ),
-                    const SizedBox(height: 18),
-                    ...details.map(
-                      (detail) => Padding(
-                        padding: const EdgeInsets.only(bottom: 6),
-                        child: Text(
-                          detail,
-                          textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
-                      ),
-                    ),
-                  ],
+              children: [
+                Text(
+                  'Bicicleta #${bike.id}',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
                 ),
-              ),
-              const Divider(thickness: 1),
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                child: _TariffPreview(
-                  bike: bike,
-                  pricingFuture: _pricingFuture,
-                ),
-              ),
-              const Divider(thickness: 1),
-              const SizedBox(height: 20),
-              if (bike.status != null && bike.status != 'DISPONIBLE')
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Text(
-                    'Esta bicicleta no aparece como disponible.',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: CyclixColors.instructionGray,
+                SizedBox(height: compact ? 18 : 28),
+                Icon(Icons.pedal_bike, size: iconSize, color: Colors.black87),
+                SizedBox(height: compact ? 12 : 18),
+                ...details.map(
+                  (detail) => Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Text(
+                      detail,
+                      textAlign: TextAlign.center,
+                      softWrap: true,
+                      style: Theme.of(context).textTheme.bodyMedium,
                     ),
                   ),
                 ),
-              _starting
-                  ? const Center(
-                      child: CircularProgressIndicator(
-                        color: CyclixColors.primaryBlue,
+                const SizedBox(height: 8),
+                const Divider(thickness: 1),
+                Padding(
+                  padding: EdgeInsets.symmetric(vertical: compact ? 10 : 14),
+                  child: _TariffPreview(
+                    bike: bike,
+                    pricingFuture: _pricingFuture,
+                  ),
+                ),
+                const Divider(thickness: 1),
+                SizedBox(height: compact ? 14 : 20),
+                if (bike.status != null && bike.status != 'DISPONIBLE')
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Text(
+                      'Esta bicicleta no aparece como disponible.',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: CyclixColors.instructionGray,
                       ),
-                    )
-                  : CyclixPrimaryButton(
-                      label: 'Desbloquear e iniciar viaje',
-                      onPressed:
-                          bike.status == null || bike.status == 'DISPONIBLE'
-                          ? _startTrip
-                          : null,
                     ),
-            ],
-          ),
+                  ),
+                _starting
+                    ? const Center(
+                        child: CircularProgressIndicator(
+                          color: CyclixColors.primaryBlue,
+                        ),
+                      )
+                    : CyclixPrimaryButton(
+                        label: 'Desbloquear e iniciar viaje',
+                        onPressed:
+                            bike.status == null || bike.status == 'DISPONIBLE'
+                            ? _startTrip
+                            : null,
+                      ),
+              ],
+            );
+          },
         ),
       ),
     );

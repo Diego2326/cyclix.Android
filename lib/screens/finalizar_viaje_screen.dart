@@ -184,7 +184,7 @@ class _FinalizarViajeScreenState extends State<FinalizarViajeScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'La API calculará tarifa, suscripción aplicada y cobro al wallet.',
+                'La API calculará tarifa, suscripción aplicada y cobro a la billetera.',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.poppins(color: CyclixColors.instructionGray),
               ),

@@ -97,7 +97,7 @@ class CyclixDrawer extends StatelessWidget {
                   ),
                   _DrawerTile(
                     icon: Icons.account_balance_wallet_outlined,
-                    title: 'Wallet',
+                    title: 'Billetera',
                     onTap: () {
                       Navigator.pop(context);
                       Navigator.push(
@@ -151,7 +151,7 @@ class CyclixDrawer extends StatelessWidget {
                 if (!isMaintenance)
                   _DrawerTile(
                     icon: Icons.support_agent_outlined,
-                    title: 'Mis tickets',
+                    title: 'Mis reportes',
                     onTap: () {
                       Navigator.pop(context);
                       Navigator.push(

@@ -198,8 +198,6 @@ class MaintenanceHomeScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 22),
-          const _MaintenanceInstructionsCard(),
-          const SizedBox(height: 18),
           GridView.count(
             crossAxisCount: 2,
             shrinkWrap: true,
@@ -375,86 +373,6 @@ class _MaintenanceBikeListScreenState extends State<MaintenanceBikeListScreen> {
   }
 
   void _setFilter(String value) => setState(() => _filter = value);
-}
-
-class _MaintenanceInstructionsCard extends StatelessWidget {
-  const _MaintenanceInstructionsCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: CyclixColors.primaryBlue.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: CyclixColors.primaryBlue.withValues(alpha: 0.14),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.info_outline, color: CyclixColors.primaryBlue),
-              const SizedBox(width: 10),
-              Text(
-                'Indicaciones del flujo',
-                style: GoogleFonts.poppins(
-                  fontWeight: FontWeight.w700,
-                  color: CyclixColors.primaryBlue,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          const _InstructionStep(
-            text:
-                'Abre una orden asignada y revisa bicicleta, estación y prioridad.',
-          ),
-          const _InstructionStep(
-            text: 'Registra diagnóstico, estado, ubicación y tiempo estimado.',
-          ),
-          const _InstructionStep(
-            text:
-                'Finaliza indicando si la bicicleta queda disponible o fuera de servicio.',
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _InstructionStep extends StatelessWidget {
-  const _InstructionStep({required this.text});
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Padding(
-            padding: EdgeInsets.only(top: 6),
-            child: Icon(Icons.circle, size: 6, color: CyclixColors.accentGreen),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              text,
-              style: GoogleFonts.poppins(
-                color: CyclixColors.textDark,
-                fontSize: 12.5,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 class MaintenanceDetailScreen extends StatefulWidget {
@@ -667,6 +585,7 @@ class MaintenanceDiagnosisScreen extends StatefulWidget {
 class _MaintenanceDiagnosisScreenState
     extends State<MaintenanceDiagnosisScreen> {
   final CyclixApiService _api = CyclixApiService();
+  final _formKey = GlobalKey<FormState>();
   late final TextEditingController _locationController;
   late final TextEditingController _minutesController;
   late final TextEditingController _diagnosisController;
@@ -701,6 +620,8 @@ class _MaintenanceDiagnosisScreenState
   }
 
   Future<void> _saveProgress() async {
+    if (!_formKey.currentState!.validate() || _saving) return;
+
     setState(() => _saving = true);
     try {
       final updated = await _api.updateMaintenanceProgress(
@@ -752,90 +673,126 @@ class _MaintenanceDiagnosisScreenState
             style: GoogleFonts.poppins(color: CyclixColors.instructionGray),
           ),
           const SizedBox(height: 18),
-          _FormPanel(
-            title: 'Orden #${widget.order.id} · ${widget.order.bike.codigo}',
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: DropdownButtonFormField<String>(
+          Form(
+            key: _formKey,
+            child: _FormPanel(
+              title: 'Orden #${widget.order.id} · ${widget.order.bike.codigo}',
+              children: [
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final statusField = DropdownButtonFormField<String>(
                       initialValue: _status,
+                      isExpanded: true,
                       decoration: _inputDecoration('Estado'),
                       items: const [
                         DropdownMenuItem(
                           value: 'IN_REVIEW',
-                          child: Text('En revisión'),
+                          child: Text(
+                            'En revisión',
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                         DropdownMenuItem(
                           value: 'IN_REPAIR',
-                          child: Text('En reparación'),
+                          child: Text(
+                            'En reparación',
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                         DropdownMenuItem(
                           value: 'WAITING_PARTS',
-                          child: Text('Esperando repuestos'),
+                          child: Text(
+                            'Esperando repuestos',
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                         DropdownMenuItem(
                           value: 'PAUSED',
-                          child: Text('Pausada'),
+                          child: Text(
+                            'Pausada',
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                       ],
+                      validator: (value) =>
+                          value == null ? 'Selecciona un estado' : null,
                       onChanged: (value) {
                         if (value != null) setState(() => _status = value);
                       },
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: TextField(
+                    );
+                    final minutesField = TextFormField(
                       controller: _minutesController,
                       keyboardType: TextInputType.number,
                       decoration: _inputDecoration('Tiempo en minutos'),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _locationController,
-                decoration: _inputDecoration('Ubicación actual'),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _diagnosisController,
-                maxLines: 4,
-                decoration: _inputDecoration('Diagnóstico'),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _noteController,
-                maxLines: 3,
-                decoration: _inputDecoration('Nota de avance'),
-              ),
-              const SizedBox(height: 18),
-              SizedBox(
-                height: 54,
-                child: ElevatedButton(
-                  onPressed: _saving ? null : _saveProgress,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: CyclixColors.accentGreen,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  child: _saving
-                      ? const SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Text('Guardar progreso'),
+                      validator: _positiveMinutesValidator,
+                    );
+
+                    if (constraints.maxWidth < 360) {
+                      return Column(
+                        children: [
+                          statusField,
+                          const SizedBox(height: 12),
+                          minutesField,
+                        ],
+                      );
+                    }
+
+                    return Row(
+                      children: [
+                        Expanded(child: statusField),
+                        const SizedBox(width: 10),
+                        Expanded(child: minutesField),
+                      ],
+                    );
+                  },
                 ),
-              ),
-            ],
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _locationController,
+                  decoration: _inputDecoration('Ubicación actual'),
+                  validator: (value) =>
+                      _requiredValidator(value, 'Indica la ubicación actual'),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _diagnosisController,
+                  maxLines: 4,
+                  decoration: _inputDecoration('Diagnóstico'),
+                  validator: (value) =>
+                      _requiredValidator(value, 'Escribe el diagnóstico'),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _noteController,
+                  maxLines: 3,
+                  decoration: _inputDecoration('Nota de avance'),
+                ),
+                const SizedBox(height: 18),
+                SizedBox(
+                  height: 54,
+                  child: ElevatedButton(
+                    onPressed: _saving ? null : _saveProgress,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: CyclixColors.accentGreen,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: _saving
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Text('Guardar progreso'),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -855,6 +812,7 @@ class MaintenanceResolveScreen extends StatefulWidget {
 
 class _MaintenanceResolveScreenState extends State<MaintenanceResolveScreen> {
   final CyclixApiService _api = CyclixApiService();
+  final _formKey = GlobalKey<FormState>();
   late final TextEditingController _notesController;
   late final TextEditingController _locationController;
   late final TextEditingController _outReasonController;
@@ -882,23 +840,7 @@ class _MaintenanceResolveScreenState extends State<MaintenanceResolveScreen> {
   }
 
   Future<void> _resolve() async {
-    if (_notesController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Las notas de resolución son obligatorias.'),
-        ),
-      );
-      return;
-    }
-    if (_result == 'OUT_OF_SERVICE' &&
-        _outReasonController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Indica el motivo para dejarla fuera de servicio.'),
-        ),
-      );
-      return;
-    }
+    if (!_formKey.currentState!.validate() || _saving) return;
 
     setState(() => _saving = true);
     try {
@@ -951,45 +893,61 @@ class _MaintenanceResolveScreenState extends State<MaintenanceResolveScreen> {
             style: GoogleFonts.poppins(color: CyclixColors.instructionGray),
           ),
           const SizedBox(height: 18),
-          _FormPanel(
-            title: 'Resultado',
-            children: [
-              SegmentedButton<String>(
-                segments: const [
-                  ButtonSegment(value: 'AVAILABLE', label: Text('Disponible')),
-                  ButtonSegment(
-                    value: 'STAYS_IN_MAINTENANCE',
-                    label: Text('Sigue en taller'),
+          Form(
+            key: _formKey,
+            child: _FormPanel(
+              title: 'Resultado',
+              children: [
+                SegmentedButton<String>(
+                  segments: const [
+                    ButtonSegment(
+                      value: 'AVAILABLE',
+                      label: Text('Disponible'),
+                    ),
+                    ButtonSegment(
+                      value: 'STAYS_IN_MAINTENANCE',
+                      label: Text('Sigue en taller'),
+                    ),
+                    ButtonSegment(
+                      value: 'OUT_OF_SERVICE',
+                      label: Text('Fuera servicio'),
+                    ),
+                  ],
+                  selected: {_result},
+                  onSelectionChanged: (value) =>
+                      setState(() => _result = value.first),
+                ),
+                const SizedBox(height: 18),
+                TextFormField(
+                  controller: _notesController,
+                  maxLines: 5,
+                  decoration: _inputDecoration('Notas de resolución'),
+                  validator: (value) => _requiredValidator(
+                    value,
+                    'Escribe las notas de resolución',
                   ),
-                  ButtonSegment(
-                    value: 'OUT_OF_SERVICE',
-                    label: Text('Fuera servicio'),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _locationController,
+                  decoration: _inputDecoration('Ubicación final'),
+                  validator: (value) =>
+                      _requiredValidator(value, 'Indica la ubicación final'),
+                ),
+                if (_result == 'OUT_OF_SERVICE') ...[
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _outReasonController,
+                    maxLines: 3,
+                    decoration: _inputDecoration('Motivo fuera de servicio'),
+                    validator: (value) => _requiredValidator(
+                      value,
+                      'Indica el motivo fuera de servicio',
+                    ),
                   ),
                 ],
-                selected: {_result},
-                onSelectionChanged: (value) =>
-                    setState(() => _result = value.first),
-              ),
-              const SizedBox(height: 18),
-              TextField(
-                controller: _notesController,
-                maxLines: 5,
-                decoration: _inputDecoration('Notas de resolución'),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _locationController,
-                decoration: _inputDecoration('Ubicación final'),
-              ),
-              if (_result == 'OUT_OF_SERVICE') ...[
-                const SizedBox(height: 12),
-                TextField(
-                  controller: _outReasonController,
-                  maxLines: 3,
-                  decoration: _inputDecoration('Motivo fuera de servicio'),
-                ),
               ],
-            ],
+            ),
           ),
           const SizedBox(height: 16),
           _FormPanel(
@@ -1571,9 +1529,11 @@ class _FormPanel extends StatelessWidget {
         children: [
           Text(
             title.toUpperCase(),
+            softWrap: true,
+            overflow: TextOverflow.visible,
             style: GoogleFonts.poppins(
               color: CyclixColors.primaryBlue,
-              fontSize: 15,
+              fontSize: 14,
               fontWeight: FontWeight.w900,
             ),
           ),
@@ -1648,6 +1608,20 @@ InputDecoration _inputDecoration(String label) {
       borderSide: const BorderSide(color: CyclixColors.primaryBlue),
     ),
   );
+}
+
+String? _requiredValidator(String? value, String message) {
+  if (value == null || value.trim().isEmpty) return message;
+  return null;
+}
+
+String? _positiveMinutesValidator(String? value) {
+  final raw = value?.trim() ?? '';
+  final minutes = int.tryParse(raw);
+  if (raw.isEmpty) return 'Indica los minutos estimados';
+  if (minutes == null) return 'Ingresa un número válido';
+  if (minutes <= 0) return 'Debe ser mayor que 0';
+  return null;
 }
 
 String _displayNameFromUser(Map<String, dynamic>? user) {

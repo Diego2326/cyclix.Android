@@ -93,7 +93,7 @@ class _WalletScreenState extends State<WalletScreen> {
                     ),
                     const SizedBox(height: 18),
                     Text(
-                      'Recargar wallet',
+                      'Recargar billetera',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
@@ -297,7 +297,7 @@ class _WalletScreenState extends State<WalletScreen> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('No se pudo recargar el wallet. $e')),
+        SnackBar(content: Text('No se pudo recargar la billetera. $e')),
       );
     } finally {
       if (mounted) {
@@ -330,7 +330,7 @@ class _WalletScreenState extends State<WalletScreen> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'No se pudo cargar tu wallet',
+                    'No se pudo cargar tu billetera',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
@@ -414,7 +414,7 @@ class _WalletScreenState extends State<WalletScreen> {
                 ),
                 const SizedBox(height: 12),
                 if (data.transactions.isEmpty)
-                  const Text('Aún no hay movimientos en tu wallet.'),
+                  const Text('Aún no hay movimientos en tu billetera.'),
                 for (final tx in data.transactions)
                   ListTile(
                     contentPadding: EdgeInsets.zero,

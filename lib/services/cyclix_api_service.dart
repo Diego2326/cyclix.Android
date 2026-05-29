@@ -68,7 +68,14 @@ class CyclixApiService {
 
   dynamic _decodeResponse(http.Response response) {
     final text = utf8.decode(response.bodyBytes);
-    final dynamic decoded = text.isEmpty ? null : jsonDecode(text);
+    dynamic decoded;
+    if (text.isNotEmpty) {
+      try {
+        decoded = jsonDecode(text);
+      } on FormatException {
+        decoded = null;
+      }
+    }
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       if (decoded is Map<String, dynamic> && decoded.containsKey('success')) {
@@ -78,10 +85,18 @@ class CyclixApiService {
           statusCode: response.statusCode,
         );
       }
-      return decoded;
+      return decoded ?? text;
     }
 
-    String message = 'Error ${response.statusCode} al comunicarse con Cyclix.';
+    String message = switch (response.statusCode) {
+      400 => 'Revisa los datos del reporte e inténtalo de nuevo.',
+      401 => 'Tu sesión venció. Inicia sesión nuevamente.',
+      403 => 'No tienes permisos para realizar esta acción.',
+      404 => 'No se encontró el recurso solicitado.',
+      409 => 'La solicitud no se pudo completar por un conflicto de datos.',
+      >= 500 => 'El servidor no pudo procesar la solicitud.',
+      _ => 'No se pudo completar la solicitud.',
+    };
     if (decoded is Map<String, dynamic>) {
       message =
           decoded['message']?.toString() ??
@@ -216,6 +231,31 @@ class CyclixApiService {
     return _asMapList(data);
   }
 
+  Future<List<Map<String, dynamic>>> getAdminTickets() async {
+    final data = await get('/admin/support/tickets');
+    return _asMapList(data);
+  }
+
+  Future<Map<String, dynamic>> updateAdminTicketStatus({
+    required Object id,
+    required String status,
+  }) async {
+    final data = await put('/admin/support/tickets/$id/status', {
+      'status': status,
+    });
+    return _asMap(data);
+  }
+
+  Future<Map<String, dynamic>> updateAdminTicketPriority({
+    required Object id,
+    required String priority,
+  }) async {
+    final data = await put('/admin/support/tickets/$id/priority', {
+      'priority': priority,
+    });
+    return _asMap(data);
+  }
+
   Future<Map<String, dynamic>> createTicket({
     required String category,
     required String priority,
@@ -235,7 +275,7 @@ class CyclixApiService {
       'title': title,
       'description': description,
     });
-    return _asMap(data);
+    return data is Map ? _asMap(data) : <String, dynamic>{};
   }
 
   Future<List<Map<String, dynamic>>> getMyFailureReports() async {
@@ -257,7 +297,7 @@ class CyclixApiService {
       'title': title,
       'description': description,
     });
-    return _asMap(data);
+    return data is Map ? _asMap(data) : <String, dynamic>{};
   }
 
   Future<List<Map<String, dynamic>>> getPricingRules() async {

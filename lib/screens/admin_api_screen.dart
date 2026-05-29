@@ -20,7 +20,7 @@ class _AdminApiScreenState extends State<AdminApiScreen> {
     final bottom = MediaQuery.paddingOf(context).bottom;
 
     return DefaultTabController(
-      length: 12,
+      length: 13,
       child: Scaffold(
         backgroundColor: CyclixColors.backgroundWhite,
         appBar: const CyclixHeader(showBack: true),
@@ -32,13 +32,14 @@ class _AdminApiScreenState extends State<AdminApiScreen> {
                 isScrollable: true,
                 tabs: [
                   Tab(text: 'Usuarios'),
-                  Tab(text: 'Tecnicos'),
-                  Tab(text: 'Ordenes'),
+                  Tab(text: 'Técnicos'),
+                  Tab(text: 'Órdenes'),
                   Tab(text: 'Zonas'),
+                  Tab(text: 'Soporte'),
                   Tab(text: 'Reportes'),
                   Tab(text: 'Viajes'),
-                  Tab(text: 'Analitica'),
-                  Tab(text: 'Auditoria'),
+                  Tab(text: 'Analítica'),
+                  Tab(text: 'Auditoría'),
                   Tab(text: 'Bicicletas'),
                   Tab(text: 'Tarifas'),
                   Tab(text: 'Festivos'),
@@ -60,6 +61,7 @@ class _AdminApiScreenState extends State<AdminApiScreen> {
                     _MaintenanceUsersTab(api: _api, bottomPadding: bottom),
                     _MaintenanceOrdersTab(api: _api, bottomPadding: bottom),
                     _ZonesTab(api: _api, bottomPadding: bottom),
+                    _SupportTicketsTab(api: _api, bottomPadding: bottom),
                     _FailureReportsTab(api: _api, bottomPadding: bottom),
                     _AdminTripsTab(api: _api, bottomPadding: bottom),
                     _AnalyticsTab(api: _api, bottomPadding: bottom),
@@ -242,7 +244,7 @@ class _MaintenanceUsersTabState extends State<_MaintenanceUsersTab> {
             ),
             const SizedBox(height: 18),
             _SectionPanel(
-              title: 'Tecnicos activos',
+              title: 'Técnicos activos',
               child: snapshot.connectionState != ConnectionState.done
                   ? const Center(child: CircularProgressIndicator())
                   : technicians.isEmpty
@@ -421,6 +423,7 @@ class _MaintenanceOrdersTabState extends State<_MaintenanceOrdersTab> {
                     children: [
                       DropdownButtonFormField<Object>(
                         initialValue: _selectedBikeId,
+                        isExpanded: true,
                         decoration: _inputDecoration('Bicicleta'),
                         items: [
                           for (final bike in availableBikes)
@@ -438,6 +441,7 @@ class _MaintenanceOrdersTabState extends State<_MaintenanceOrdersTab> {
                       const SizedBox(height: 12),
                       DropdownButtonFormField<Object?>(
                         initialValue: _selectedTechnicianId,
+                        isExpanded: true,
                         decoration: _inputDecoration('Asignar tecnico'),
                         items: [
                           const DropdownMenuItem<Object?>(
@@ -458,66 +462,81 @@ class _MaintenanceOrdersTabState extends State<_MaintenanceOrdersTab> {
                             setState(() => _selectedTechnicianId = value),
                       ),
                       const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: DropdownButtonFormField<String>(
-                              initialValue: _priority,
-                              decoration: _inputDecoration('Prioridad'),
-                              items: const [
-                                DropdownMenuItem(
-                                  value: 'LOW',
-                                  child: Text('Baja'),
-                                ),
-                                DropdownMenuItem(
-                                  value: 'MEDIUM',
-                                  child: Text('Media'),
-                                ),
-                                DropdownMenuItem(
-                                  value: 'HIGH',
-                                  child: Text('Alta'),
-                                ),
-                                DropdownMenuItem(
-                                  value: 'CRITICAL',
-                                  child: Text('Critica'),
-                                ),
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          final priorityField = DropdownButtonFormField<String>(
+                            initialValue: _priority,
+                            isExpanded: true,
+                            decoration: _inputDecoration('Prioridad'),
+                            items: const [
+                              DropdownMenuItem(
+                                value: 'LOW',
+                                child: Text('Baja'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'MEDIUM',
+                                child: Text('Media'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'HIGH',
+                                child: Text('Alta'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'CRITICAL',
+                                child: Text('Crítica'),
+                              ),
+                            ],
+                            onChanged: (value) =>
+                                setState(() => _priority = value ?? 'MEDIUM'),
+                          );
+                          final typeField = DropdownButtonFormField<String>(
+                            initialValue: _type,
+                            isExpanded: true,
+                            decoration: _inputDecoration('Tipo'),
+                            items: const [
+                              DropdownMenuItem(
+                                value: 'GENERAL',
+                                child: Text('General'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'BRAKES',
+                                child: Text('Frenos'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'TIRES',
+                                child: Text('Llantas'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'CHAIN',
+                                child: Text('Cadena'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'PREVENTIVE',
+                                child: Text('Preventivo'),
+                              ),
+                            ],
+                            onChanged: (value) =>
+                                setState(() => _type = value ?? 'GENERAL'),
+                          );
+
+                          if (constraints.maxWidth < 360) {
+                            return Column(
+                              children: [
+                                priorityField,
+                                const SizedBox(height: 12),
+                                typeField,
                               ],
-                              onChanged: (value) =>
-                                  setState(() => _priority = value ?? 'MEDIUM'),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: DropdownButtonFormField<String>(
-                              initialValue: _type,
-                              decoration: _inputDecoration('Tipo'),
-                              items: const [
-                                DropdownMenuItem(
-                                  value: 'GENERAL',
-                                  child: Text('General'),
-                                ),
-                                DropdownMenuItem(
-                                  value: 'BRAKES',
-                                  child: Text('Frenos'),
-                                ),
-                                DropdownMenuItem(
-                                  value: 'TIRES',
-                                  child: Text('Llantas'),
-                                ),
-                                DropdownMenuItem(
-                                  value: 'CHAIN',
-                                  child: Text('Cadena'),
-                                ),
-                                DropdownMenuItem(
-                                  value: 'PREVENTIVE',
-                                  child: Text('Preventivo'),
-                                ),
-                              ],
-                              onChanged: (value) =>
-                                  setState(() => _type = value ?? 'GENERAL'),
-                            ),
-                          ),
-                        ],
+                            );
+                          }
+
+                          return Row(
+                            children: [
+                              Expanded(child: priorityField),
+                              const SizedBox(width: 12),
+                              Expanded(child: typeField),
+                            ],
+                          );
+                        },
                       ),
                       const SizedBox(height: 12),
                       _TextInput(
@@ -550,9 +569,9 @@ class _MaintenanceOrdersTabState extends State<_MaintenanceOrdersTab> {
               ),
               const SizedBox(height: 18),
               _SectionPanel(
-                title: 'Ordenes recientes',
+                title: 'Órdenes recientes',
                 child: data.orders.isEmpty
-                    ? const Text('Aun no hay ordenes de mantenimiento.')
+                    ? const Text('Aún no hay órdenes de mantenimiento.')
                     : Column(
                         children: [
                           for (final order in data.orders)
@@ -802,6 +821,18 @@ class _FailureReportsTabState extends State<_FailureReportsTab> {
   }
 
   Future<void> _sendToMaintenance(Map<String, dynamic> report) async {
+    if (report['bikeId'] == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Este reporte no tiene bicicleta asociada. Revísalo en Soporte.',
+          ),
+        ),
+      );
+      return;
+    }
+
     try {
       await widget.api.createMaintenanceFromFailureReport(
         reportId: report['id'],
@@ -840,20 +871,188 @@ class _FailureReportsTabState extends State<_FailureReportsTab> {
           separatorBuilder: (_, _) => const Divider(height: 1),
           itemBuilder: (context, index) {
             final report = reports[index];
+            final bikeId = report['bikeId'];
+            final canCreateMaintenance = bikeId != null;
             return ListTile(
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.report_problem_outlined),
               title: Text(report['title']?.toString() ?? ''),
               subtitle: Text(
-                'Bici ${report['bikeId']} · ${report['priority']} · ${report['status']}',
+                '${canCreateMaintenance ? 'Bici $bikeId' : 'Sin bicicleta'} · ${_priorityLabel(report['priority']?.toString() ?? '')} · ${_statusLabel(report['status']?.toString() ?? '')}',
               ),
               trailing: IconButton(
-                tooltip: 'Crear mantenimiento',
-                onPressed: () => _sendToMaintenance(report),
-                icon: const Icon(Icons.build_outlined),
+                tooltip: canCreateMaintenance
+                    ? 'Crear mantenimiento'
+                    : 'Sin bicicleta asociada',
+                onPressed: canCreateMaintenance
+                    ? () => _sendToMaintenance(report)
+                    : null,
+                icon: Icon(
+                  Icons.build_outlined,
+                  color: canCreateMaintenance ? null : Colors.grey,
+                ),
               ),
             );
           },
+        );
+      },
+    );
+  }
+}
+
+class _SupportTicketsTab extends StatefulWidget {
+  const _SupportTicketsTab({required this.api, required this.bottomPadding});
+
+  final CyclixApiService api;
+  final double bottomPadding;
+
+  @override
+  State<_SupportTicketsTab> createState() => _SupportTicketsTabState();
+}
+
+class _SupportTicketsTabState extends State<_SupportTicketsTab> {
+  late Future<List<Map<String, dynamic>>> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = widget.api.getAdminTickets();
+  }
+
+  Future<void> _reload() async {
+    setState(() {
+      _future = widget.api.getAdminTickets();
+    });
+    await _future;
+  }
+
+  Future<void> _updateStatus(Map<String, dynamic> ticket, String status) async {
+    try {
+      await widget.api.updateAdminTicketStatus(
+        id: ticket['id'],
+        status: status,
+      );
+      await _reload();
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Estado actualizado.')));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('No se pudo actualizar. $e')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _future,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return _AdminError(message: snapshot.error.toString());
+        }
+
+        final tickets = snapshot.data ?? const <Map<String, dynamic>>[];
+        if (tickets.isEmpty) {
+          return const Center(child: Text('Sin reportes de soporte.'));
+        }
+
+        return RefreshIndicator(
+          onRefresh: _reload,
+          child: ListView.separated(
+            padding: EdgeInsets.fromLTRB(16, 16, 16, 24 + widget.bottomPadding),
+            itemCount: tickets.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 10),
+            itemBuilder: (context, index) {
+              final ticket = tickets[index];
+              final status = ticket['status']?.toString() ?? 'OPEN';
+              final priority = ticket['priority']?.toString() ?? 'MEDIUM';
+              final category = ticket['category']?.toString() ?? '';
+              final createdAt = ticket['createdAt']?.toString() ?? '';
+
+              return Container(
+                decoration: BoxDecoration(
+                  border: Border.all(color: const Color(0xFFE6EAF0)),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: ExpansionTile(
+                  leading: const Icon(
+                    Icons.support_agent_outlined,
+                    color: CyclixColors.primaryBlue,
+                  ),
+                  title: Text(
+                    ticket['title']?.toString() ?? 'Reporte sin título',
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  subtitle: Text(
+                    'Usuario #${ticket['userId']} · ${_categoryLabel(category)} · ${_priorityLabel(priority)} · ${_statusLabel(status)}',
+                  ),
+                  childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  children: [
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        ticket['description']?.toString() ?? 'Sin descripción.',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    _KeyValueRow(
+                      label: 'Fecha',
+                      value: createdAt.isEmpty ? 'Sin fecha' : createdAt,
+                    ),
+                    if (ticket['bikeId'] != null)
+                      _KeyValueRow(
+                        label: 'Bicicleta',
+                        value: '#${ticket['bikeId']}',
+                      ),
+                    if (ticket['tripId'] != null)
+                      _KeyValueRow(
+                        label: 'Viaje',
+                        value: '#${ticket['tripId']}',
+                      ),
+                    if (ticket['paymentId'] != null)
+                      _KeyValueRow(
+                        label: 'Pago',
+                        value: '#${ticket['paymentId']}',
+                      ),
+                    const SizedBox(height: 8),
+                    DropdownButtonFormField<String>(
+                      initialValue: status,
+                      decoration: _inputDecoration('Estado'),
+                      items: const [
+                        DropdownMenuItem(value: 'OPEN', child: Text('Abierto')),
+                        DropdownMenuItem(
+                          value: 'IN_PROGRESS',
+                          child: Text('En progreso'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'WAITING_USER',
+                          child: Text('Esperando respuesta'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'RESOLVED',
+                          child: Text('Resuelto'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'CLOSED',
+                          child: Text('Cerrado'),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        if (value == null || value == status) return;
+                        _updateStatus(ticket, value);
+                      },
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
         );
       },
     );
@@ -1631,13 +1830,31 @@ String? _positiveInt(String? value) {
 
 String _statusLabel(String value) {
   return switch (value) {
+    'OPEN' => 'Abierto',
+    'IN_PROGRESS' => 'En progreso',
+    'WAITING_USER' => 'Esperando respuesta',
+    'RESOLVED' => 'Resuelto',
+    'CLOSED' => 'Cerrado',
     'PENDING' => 'Nuevo',
     'ASSIGNED' => 'Asignada',
-    'IN_REVIEW' => 'En revision',
-    'IN_REPAIR' => 'En reparacion',
+    'IN_REVIEW' => 'En revisión',
+    'IN_REPAIR' => 'En reparación',
     'WAITING_PARTS' => 'Esperando repuestos',
     'PAUSED' => 'Pausada',
     'FINALIZED' => 'Finalizada',
+    _ => value,
+  };
+}
+
+String _categoryLabel(String value) {
+  return switch (value) {
+    'BIKE' => 'Bicicleta',
+    'APP' => 'Aplicación',
+    'PAYMENT' => 'Pago',
+    'ACCOUNT' => 'Cuenta',
+    'TRIP' => 'Viaje',
+    'EMERGENCY' => 'Emergencia',
+    'OTHER' => 'Otro',
     _ => value,
   };
 }
@@ -1647,7 +1864,7 @@ String _priorityLabel(String value) {
     'LOW' => 'Baja',
     'MEDIUM' => 'Media',
     'HIGH' => 'Alta',
-    'CRITICAL' => 'Critica',
+    'CRITICAL' => 'Crítica',
     _ => value,
   };
 }

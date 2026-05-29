@@ -50,7 +50,7 @@ class _PlanesScreenState extends State<PlanesScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'El plan se aplica automaticamente al finalizar viajes: primero consume tus minutos incluidos y luego cobra extras al wallet.',
+                      'El plan se aplica automaticamente al finalizar viajes: primero consume tus minutos incluidos y luego cobra extras a la billetera.',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: CyclixColors.instructionGray,
                       ),
@@ -170,7 +170,7 @@ class _PlanesScreenState extends State<PlanesScreen> {
                   ),
                   const SizedBox(height: 6),
                   const Text(
-                    'Contrata minutos mensuales para que tus viajes usen primero el plan y cobren al wallet solo el excedente.',
+                    'Contrata minutos mensuales para que tus viajes usen primero el plan y cobren a la billetera solo el excedente.',
                     style: TextStyle(color: CyclixColors.instructionGray),
                   ),
                   const SizedBox(height: 18),
