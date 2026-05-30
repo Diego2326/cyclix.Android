@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 
 import '../models/bike_info.dart';
+import '../services/active_trip_controller.dart';
 import '../services/cyclix_api_service.dart';
 import '../theme/cyclix_colors.dart';
 import '../widgets/cyclix_header.dart';
 import '../widgets/cyclix_primary_button.dart';
-import 'viaje_activo_screen.dart';
 
 class BikeDetailScreen extends StatefulWidget {
   const BikeDetailScreen({super.key, required this.bike});
@@ -51,22 +51,22 @@ class _BikeDetailScreenState extends State<BikeDetailScreen> {
     try {
       if (widget.bike.isDemo) {
         final startedAt = DateTime.now();
+        final session = ActiveTripSession(
+          trip: {
+            'id': 'demo-trip',
+            'bikeId': widget.bike.id,
+            'status': 'ACTIVE',
+            'startedAt': startedAt.toIso8601String(),
+          },
+          bike: widget.bike,
+          startLatitude: 14.6349,
+          startLongitude: -90.5069,
+        );
+        ActiveTripController.instance.setSession(session);
         if (!mounted) return;
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(
-            builder: (_) => ViajeActivoScreen(
-              trip: {
-                'id': 'demo-trip',
-                'bikeId': widget.bike.id,
-                'status': 'ACTIVE',
-                'startedAt': startedAt.toIso8601String(),
-              },
-              bike: widget.bike,
-              startLatitude: 14.6349,
-              startLongitude: -90.5069,
-            ),
-          ),
+          ActiveTripController.instance.buildRoute(session),
         );
         return;
       }
@@ -94,18 +94,18 @@ class _BikeDetailScreenState extends State<BikeDetailScreen> {
         latitude: position.latitude,
         longitude: position.longitude,
       );
+      final session = ActiveTripSession(
+        trip: trip,
+        bike: widget.bike,
+        startLatitude: position.latitude,
+        startLongitude: position.longitude,
+      );
+      ActiveTripController.instance.setSession(session);
 
       if (!mounted) return;
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(
-          builder: (_) => ViajeActivoScreen(
-            trip: trip,
-            bike: widget.bike,
-            startLatitude: position.latitude,
-            startLongitude: position.longitude,
-          ),
-        ),
+        ActiveTripController.instance.buildRoute(session),
       );
     } catch (e) {
       if (!mounted) return;

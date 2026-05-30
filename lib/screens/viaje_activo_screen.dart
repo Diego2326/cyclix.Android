@@ -7,7 +7,6 @@ import '../models/bike_info.dart';
 import '../theme/cyclix_colors.dart';
 import '../widgets/cyclix_header.dart';
 import 'finalizar_viaje_screen.dart';
-import 'foto_cierre_screen.dart';
 import 'soporte_screen.dart';
 
 class ViajeActivoScreen extends StatefulWidget {
@@ -15,14 +14,14 @@ class ViajeActivoScreen extends StatefulWidget {
     super.key,
     required this.trip,
     required this.bike,
-    required this.startLatitude,
-    required this.startLongitude,
+    this.startLatitude,
+    this.startLongitude,
   });
 
   final Map<String, dynamic> trip;
   final BikeInfo bike;
-  final double startLatitude;
-  final double startLongitude;
+  final double? startLatitude;
+  final double? startLongitude;
 
   @override
   State<ViajeActivoScreen> createState() => _ViajeActivoScreenState();
@@ -62,12 +61,6 @@ class _ViajeActivoScreenState extends State<ViajeActivoScreen> {
   }
 
   Future<void> _finishTrip() async {
-    final photoPath = await Navigator.push<String>(
-      context,
-      MaterialPageRoute(builder: (_) => const FotoCierreScreen()),
-    );
-    if (!mounted || photoPath == null) return;
-
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -76,7 +69,6 @@ class _ViajeActivoScreenState extends State<ViajeActivoScreen> {
           bike: widget.bike,
           startLatitude: widget.startLatitude,
           startLongitude: widget.startLongitude,
-          closurePhotoPath: photoPath,
         ),
       ),
     );

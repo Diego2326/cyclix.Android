@@ -1,10 +1,9 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../models/bike_info.dart';
+import '../services/active_trip_controller.dart';
 import '../services/cyclix_api_service.dart';
 import '../theme/cyclix_colors.dart';
 import '../widgets/cyclix_header.dart';
@@ -15,16 +14,14 @@ class FinalizarViajeScreen extends StatefulWidget {
     super.key,
     required this.trip,
     required this.bike,
-    required this.startLatitude,
-    required this.startLongitude,
-    this.closurePhotoPath,
+    this.startLatitude,
+    this.startLongitude,
   });
 
   final Map<String, dynamic> trip;
   final BikeInfo bike;
-  final double startLatitude;
-  final double startLongitude;
-  final String? closurePhotoPath;
+  final double? startLatitude;
+  final double? startLongitude;
 
   @override
   State<FinalizarViajeScreen> createState() => _FinalizarViajeScreenState();
@@ -33,14 +30,7 @@ class FinalizarViajeScreen extends StatefulWidget {
 class _FinalizarViajeScreenState extends State<FinalizarViajeScreen> {
   final CyclixApiService _api = CyclixApiService();
   bool _bloqueada = false;
-  bool _fotoConfirmada = false;
   bool _loading = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _fotoConfirmada = widget.closurePhotoPath != null;
-  }
 
   Future<Position?> _getPosition() async {
     var permission = await Geolocator.checkPermission();
@@ -55,9 +45,12 @@ class _FinalizarViajeScreenState extends State<FinalizarViajeScreen> {
   }
 
   double? _distanceKm(Position position) {
+    if (widget.startLatitude == null || widget.startLongitude == null) {
+      return null;
+    }
     final meters = Geolocator.distanceBetween(
-      widget.startLatitude,
-      widget.startLongitude,
+      widget.startLatitude!,
+      widget.startLongitude!,
       position.latitude,
       position.longitude,
     );
@@ -65,10 +58,10 @@ class _FinalizarViajeScreenState extends State<FinalizarViajeScreen> {
   }
 
   Future<void> _finish() async {
-    if (!_bloqueada || !_fotoConfirmada) {
+    if (!_bloqueada) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Confirma el bloqueo y la foto antes de finalizar.'),
+          content: Text('Confirma que la bicicleta quedó bloqueada.'),
         ),
       );
       return;
@@ -92,6 +85,7 @@ class _FinalizarViajeScreenState extends State<FinalizarViajeScreen> {
         final total = baseFare + extraAmount;
 
         if (!mounted) return;
+        ActiveTripController.instance.clear();
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -145,6 +139,7 @@ class _FinalizarViajeScreenState extends State<FinalizarViajeScreen> {
       );
 
       if (!mounted) return;
+      ActiveTripController.instance.clear();
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => PagoScreen(trip: finishedTrip)),
@@ -162,6 +157,7 @@ class _FinalizarViajeScreenState extends State<FinalizarViajeScreen> {
   @override
   Widget build(BuildContext context) {
     final bottom = MediaQuery.paddingOf(context).bottom;
+    final canFinish = _bloqueada && !_loading;
 
     return Scaffold(
       backgroundColor: CyclixColors.backgroundWhite,
@@ -184,7 +180,7 @@ class _FinalizarViajeScreenState extends State<FinalizarViajeScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'La API calculará tarifa, suscripción aplicada y cobro a la billetera.',
+                'Confirma el bloqueo y la API calculará tarifa, suscripción aplicada y cobro a la billetera.',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.poppins(color: CyclixColors.instructionGray),
               ),
@@ -197,21 +193,6 @@ class _FinalizarViajeScreenState extends State<FinalizarViajeScreen> {
                 onChanged: (value) =>
                     setState(() => _bloqueada = value ?? false),
               ),
-              const SizedBox(height: 12),
-              _CheckAction(
-                value: _fotoConfirmada,
-                icon: Icons.camera_alt_outlined,
-                title: 'Foto del cierre tomada',
-                subtitle: widget.closurePhotoPath == null
-                    ? 'Marca esta opción cuando tengas evidencia del cierre.'
-                    : 'Foto capturada. Se enviará al API cuando esté disponible.',
-                onChanged: (value) =>
-                    setState(() => _fotoConfirmada = value ?? false),
-              ),
-              if (widget.closurePhotoPath != null) ...[
-                const SizedBox(height: 12),
-                _ClosurePhotoPreview(path: widget.closurePhotoPath!),
-              ],
               const Spacer(),
               _loading
                   ? const Center(
@@ -220,7 +201,7 @@ class _FinalizarViajeScreenState extends State<FinalizarViajeScreen> {
                       ),
                     )
                   : FilledButton.icon(
-                      onPressed: _finish,
+                      onPressed: canFinish ? _finish : null,
                       style: FilledButton.styleFrom(
                         backgroundColor: CyclixColors.accentGreen,
                         foregroundColor: Colors.white,
@@ -238,61 +219,6 @@ class _FinalizarViajeScreenState extends State<FinalizarViajeScreen> {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _ClosurePhotoPreview extends StatelessWidget {
-  const _ClosurePhotoPreview({required this.path});
-
-  final String path;
-
-  @override
-  Widget build(BuildContext context) {
-    final isDemo = path.startsWith('demo://');
-    return Container(
-      height: 96,
-      decoration: BoxDecoration(
-        color: CyclixColors.cardGrey,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFE6EAF0)),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Row(
-        children: [
-          AspectRatio(
-            aspectRatio: 1,
-            child: isDemo
-                ? const ColoredBox(
-                    color: CyclixColors.primaryBlue,
-                    child: Icon(
-                      Icons.image_search_outlined,
-                      color: Colors.white,
-                      size: 34,
-                    ),
-                  )
-                : Image.file(File(path), fit: BoxFit.cover),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              isDemo
-                  ? 'Foto simulada lista para pruebas'
-                  : 'Foto de cierre lista',
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
-            ),
-          ),
-          const Padding(
-            padding: EdgeInsets.only(right: 12),
-            child: Icon(
-              Icons.check_circle_rounded,
-              color: CyclixColors.accentGreen,
-            ),
-          ),
-        ],
       ),
     );
   }
